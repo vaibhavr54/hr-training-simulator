@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>HR Training Simulator — Demo</title>
+</head>
+<body>
+  <h2>HR Training Simulator — Demo</h2>
+  <label>Candidate name:
+    <input id="candidate" placeholder="Your name"/>
+  </label>
+  <div>
+    <video id="preview" autoplay playsinline muted style="width:480px; border:1px solid #ccc;"></video>
+  </div>
+  <div style="margin-top:8px;">
+    <button id="startBtn">Start Recording</button>
+    <button id="stopBtn" disabled>Stop & Upload</button>
+  </div>
+  <div id="status" style="margin-top:8px;color:green;"></div>
+
+  <!-- Transcript display -->
+  <h3>Transcript:</h3>
+  <pre id="transcriptBox" style="white-space:pre-wrap; background:#f4f4f4; padding:8px; border:1px solid #ddd; max-width:480px;"></pre>
+
+<script>
+const preview = document.getElementById('preview');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const status = document.getElementById('status');
+const candidate = document.getElementById('candidate');
+const transcriptBox = document.getElementById('transcriptBox');
+
+let mediaStream = null;
+let recorder = null;
+let chunks = [];
+
+async function initMedia(){
+  try{
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        sampleRate: 44100
+      }
+    });
+
+    preview.srcObject = mediaStream;
+    status.textContent = 'Camera & mic ready';
+  }catch(err){
+    alert('Cannot access camera/mic: ' + err.message);
+  }
+}
+
+startBtn.addEventListener('click', async ()=>{
+  if(!mediaStream) await initMedia();
+  chunks = [];
+  const options = { mimeType: 'video/webm;codecs=vp8,opus' };
+  recorder = new MediaRecorder(mediaStream, options);
+  recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  recorder.onstop = onStop;
+  recorder.start();
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  status.textContent = 'Recording...';
+});
+
+stopBtn.addEventListener('click', ()=>{
+  if(recorder && recorder.state !== 'inactive'){
+    recorder.stop();
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    status.textContent = 'Stopping...';
+  }
+});
+
+async function onStop(){
+  const blob = new Blob(chunks, { type: 'video/webm' });
+  const form = new FormData();
+  form.append('file', blob, 'response.webm');
+  form.append('candidate', candidate.value || 'unknown');
+
+  status.textContent = 'Uploading...';
+  try{
+    const res = await fetch('/upload-audio', { method: 'POST', body: form });
+    const data = await res.json();
+    status.textContent = 'Uploaded successfully!';
+    console.log('Upload response:', data);
+
+    // ✅ Show transcript in UI
+    transcriptBox.textContent = data.transcript || '[No transcript received]';
+  }catch(err){
+    status.textContent = 'Upload failed: ' + err.message;
+  }
+}
+
+window.addEventListener('load', initMedia);
+</script>
+</body>
+</html>
