@@ -2,25 +2,131 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>HR Training Simulator — Demo</title>
+  <title>AI-Powered HR Training Simulator</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: #f4f7f9;
+      margin: 20px;
+      color: #333;
+    }
+
+    h2, h3 { color: #2c3e50; }
+
+    .container { display: flex; gap: 40px; flex-wrap: wrap; }
+    .left-panel, .right-panel { flex: 1; min-width: 320px; }
+
+    #preview {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin-bottom: 8px;
+      background: #000;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 16px;
+      margin-right: 6px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #startBtn { background: #4CAF50; color: #fff; }
+    #startBtn:hover { background: #45a049; }
+    #stopBtn { background: #f44336; color: #fff; }
+    #stopBtn:hover { background: #e53935; }
+
+    .status { font-weight: bold; margin-top: 6px; color: #27ae60; }
+
+    .transcript, .history-card {
+      background: #fff;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+      max-width: 100%;
+      word-wrap: break-word;
+    }
+
+    .history-card { border-left: 6px solid #3498db; }
+    .history-card a { color: #2980b9; text-decoration: none; }
+    .history-card a:hover { text-decoration: underline; }
+
+    label { display: block; margin-bottom: 8px; font-weight: 500; }
+    input, select {
+      padding: 6px 8px;
+      font-size: 16px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+    }
+
+    .meta-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .meta-row > * { flex: 1; }
+    #timerDisplay { font-size: 18px; font-weight:700; color:#c0392b; }
+    .agenda { font-size:14px; color:#555; margin-bottom:12px; }
+  </style>
 </head>
 <body>
-  <h2>HR Training Simulator — Demo</h2>
-  <label>Candidate name:
-    <input id="candidate" placeholder="Your name"/>
-  </label>
-  <div>
-    <video id="preview" autoplay playsinline muted style="width:480px; border:1px solid #ccc;"></video>
-  </div>
-  <div style="margin-top:8px;">
-    <button id="startBtn">Start Recording</button>
-    <button id="stopBtn" disabled>Stop & Upload</button>
-  </div>
-  <div id="status" style="margin-top:8px;color:green;"></div>
+  <h2>AI-Powered HR Training Simulator</h2>
 
-  <!-- Transcript display -->
-  <h3>Transcript:</h3>
-  <pre id="transcriptBox" style="white-space:pre-wrap; background:#f4f4f4; padding:8px; border:1px solid #ddd; max-width:480px;"></pre>
+  <div class="container">
+    <!-- Left panel: Video + Recording -->
+    <div class="left-panel">
+      <label>Candidate Name:
+        <input id="candidate" placeholder="Enter your name"/>
+      </label>
+
+      <label>Role:
+        <select id="roleSelect">
+          <option value="General">General HR Interview</option>
+          <option value="Software Engineer">Software Engineer</option>
+          <option value="Data Scientist">Data Scientist</option>
+          <option value="Product Manager">Product Manager</option>
+        </select>
+      </label>
+
+      <div class="agenda" id="agendaBox"></div>
+
+      <div class="meta-row">
+        <div>
+          <label>Time per answer (minutes)</label>
+          <input id="timePerAnswer" type="number" min="1" value="2" />
+        </div>
+        <div style="min-width:110px; text-align:center;">
+          <label>Timer</label>
+          <div id="timerDisplay">00:00</div>
+        </div>
+      </div>
+
+      <video id="preview" autoplay playsinline muted></video>
+
+      <div>
+        <button id="startBtn">Start Recording</button>
+        <button id="stopBtn" disabled>Stop & Upload</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <h3>Transcript:</h3>
+      <div id="transcriptBox" class="transcript">[Transcript will appear here]</div>
+    </div>
+
+    <!-- Right panel: History -->
+    <div class="right-panel">
+      <h3>Past Attempts:</h3>
+      <div id="history"></div>
+    </div>
+  </div>
 
 <script>
 const preview = document.getElementById('preview');
@@ -29,29 +135,65 @@ const stopBtn = document.getElementById('stopBtn');
 const status = document.getElementById('status');
 const candidate = document.getElementById('candidate');
 const transcriptBox = document.getElementById('transcriptBox');
+const historyContainer = document.getElementById('history');
+const roleSelect = document.getElementById('roleSelect');
+const agendaBox = document.getElementById('agendaBox');
+const timePerAnswer = document.getElementById('timePerAnswer');
+const timerDisplay = document.getElementById('timerDisplay');
 
 let mediaStream = null;
 let recorder = null;
 let chunks = [];
+let countdownInterval = null;
+let remainingSeconds = 0;
+
+// Sample agendas per role
+const agendas = {
+  "General": [
+    "Tell me about yourself.",
+    "Why are you interested in this role?",
+    "Describe a challenge you faced and how you solved it."
+  ],
+  "Software Engineer": [
+    "Walk me through a recent project you built.",
+    "How do you ensure code quality?",
+    "Explain a bug you fixed and how you diagnosed it."
+  ],
+  "Data Scientist": [
+    "Describe a model you deployed to production.",
+    "How do you handle missing data?",
+    "Explain a time you used data to influence a decision."
+  ],
+  "Product Manager": [
+    "Tell me about a product you launched.",
+    "How do you prioritize features?",
+    "How do you handle stakeholder conflicts?"
+  ]
+};
+
+function renderAgenda(role) {
+  const list = agendas[role] || agendas["General"];
+  agendaBox.innerHTML = "<strong>Agenda / Sample Questions:</strong><ul>" +
+    list.map(q => `<li>${q}</li>`).join("") +
+    "</ul>";
+}
+
+renderAgenda(roleSelect.value);
 
 async function initMedia(){
-  try{
+  try {
     mediaStream = await navigator.mediaDevices.getUserMedia({
       video: true,
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        sampleRate: 44100
-      }
+      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 }
     });
-
     preview.srcObject = mediaStream;
     status.textContent = 'Camera & mic ready';
-  }catch(err){
+  } catch(err) {
     alert('Cannot access camera/mic: ' + err.message);
   }
 }
 
+// Start Recording
 startBtn.addEventListener('click', async ()=>{
   if(!mediaStream) await initMedia();
   chunks = [];
@@ -63,36 +205,95 @@ startBtn.addEventListener('click', async ()=>{
   startBtn.disabled = true;
   stopBtn.disabled = false;
   status.textContent = 'Recording...';
+
+  // start countdown (convert minutes → seconds)
+  remainingSeconds = (parseInt(timePerAnswer.value) || 2) * 60;
+  updateTimerDisplay(remainingSeconds);
+  clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    remainingSeconds--;
+    updateTimerDisplay(remainingSeconds);
+    if (remainingSeconds <= 0) {
+      if(recorder && recorder.state !== 'inactive') recorder.stop();
+      clearInterval(countdownInterval);
+      status.textContent = 'Time up — uploading...';
+    }
+  }, 1000);
+
+  loadHistory();
 });
 
+// Stop Recording & Upload
 stopBtn.addEventListener('click', ()=>{
   if(recorder && recorder.state !== 'inactive'){
     recorder.stop();
     startBtn.disabled = false;
     stopBtn.disabled = true;
     status.textContent = 'Stopping...';
+    clearInterval(countdownInterval);
   }
 });
 
 async function onStop(){
+  clearInterval(countdownInterval);
+  updateTimerDisplay(0);
   const blob = new Blob(chunks, { type: 'video/webm' });
   const form = new FormData();
   form.append('file', blob, 'response.webm');
   form.append('candidate', candidate.value || 'unknown');
+  form.append('role', roleSelect.value || 'General');
 
   status.textContent = 'Uploading...';
-  try{
+  try {
     const res = await fetch('/upload-audio', { method: 'POST', body: form });
     const data = await res.json();
     status.textContent = 'Uploaded successfully!';
-    console.log('Upload response:', data);
-
-    // ✅ Show transcript in UI
     transcriptBox.textContent = data.transcript || '[No transcript received]';
-  }catch(err){
+    loadHistory();
+  } catch(err){
     status.textContent = 'Upload failed: ' + err.message;
+  } finally {
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
   }
 }
+
+function updateTimerDisplay(seconds) {
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+  timerDisplay.textContent = `${mm}:${ss}`;
+}
+
+async function loadHistory() {
+  const candidateName = candidate.value || 'unknown';
+  if(!candidateName) return;
+  try {
+    const res = await fetch(`/history/${encodeURIComponent(candidateName)}`);
+    const data = await res.json();
+    historyContainer.innerHTML = '';
+    data.history.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'history-card';
+      div.innerHTML = `
+        <strong>Date:</strong> ${new Date(item.timestamp).toLocaleString()}<br>
+        <strong>Role:</strong> ${item.role || 'General'}<br>
+        <strong>Transcript:</strong> ${item.transcript}<br>
+        <strong>File:</strong> <a href="${item.file_path}" target="_blank">View/Download</a>
+      `;
+      historyContainer.appendChild(div);
+    });
+  } catch(err){
+    console.error('Failed to load history:', err);
+  }
+}
+
+roleSelect.addEventListener('change', () => renderAgenda(roleSelect.value));
+
+let historyTimer = null;
+candidate.addEventListener('input', () => {
+  clearTimeout(historyTimer);
+  historyTimer = setTimeout(loadHistory, 700);
+});
 
 window.addEventListener('load', initMedia);
 </script>

@@ -28,13 +28,19 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 # Load Whisper model once at startup
 model = whisper.load_model("base")
 
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     html_path = BASE_DIR / "static" / "index.html"
     return HTMLResponse(html_path.read_text(encoding="utf-8"))
 
+
 @app.post("/upload-audio")
-async def upload_audio(file: UploadFile = File(...), candidate: str = Form(...)):
+async def upload_audio(
+    file: UploadFile = File(...),
+    candidate: str = Form(...),
+    role: str = Form(None),
+):
     uploads_dir = BASE_DIR / "uploads"
     uploads_dir.mkdir(exist_ok=True)
 
@@ -50,15 +56,18 @@ async def upload_audio(file: UploadFile = File(...), candidate: str = Form(...))
     # Run Whisper transcription
     result = model.transcribe(str(file_path))
 
-    # (Optional) Store in MongoDB later
-    # sessions.insert_one({
-    #     "candidate": candidate,
-    #     "filename": filename,
-    #     "transcript": result["text"],
-    #     "timestamp": datetime.utcnow(),
-    # })
+    # Store metadata + transcript in MongoDB
+    sessions.insert_one({
+        "candidate": candidate,
+        "role": role or "General",
+        "filename": filename,
+        "file_path": str(file_path),
+        "transcript": result["text"],
+        "timestamp": datetime.utcnow(),
+        "score": None  # placeholder for future GPT scoring
+    })
 
-    print(f"[INFO] Candidate: {candidate} | File: {filename}")
+    print(f"[INFO] Candidate: {candidate} | Role: {role} | File: {filename}")
     print(f"[Transcript] {result['text']}")
 
     return {
@@ -67,6 +76,19 @@ async def upload_audio(file: UploadFile = File(...), candidate: str = Form(...))
         "path": str(file_path),
         "transcript": result["text"],
     }
+
+
+@app.get("/history/{candidate}")
+def get_history(candidate: str):
+    cursor = sessions.find({"candidate": candidate}, {"_id": 0})
+    attempts = []
+    for doc in cursor:
+        # Ensure timestamp is JSON-serializable
+        ts = doc.get("timestamp")
+        doc["timestamp"] = ts.isoformat() if hasattr(ts, "isoformat") else ts
+        attempts.append(doc)
+    return {"history": attempts}
+
 
 @app.get("/health")
 def health():
