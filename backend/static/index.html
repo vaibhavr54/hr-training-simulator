@@ -45,7 +45,7 @@
 
     .status { font-weight: bold; margin-top: 6px; color: #27ae60; }
 
-    .transcript, .history-card {
+    .card {
       background: #fff;
       padding: 12px;
       border-radius: 8px;
@@ -74,6 +74,23 @@
     .meta-row > * { flex: 1; }
     #timerDisplay { font-size: 18px; font-weight:700; color:#c0392b; }
     .agenda { font-size:14px; color:#555; margin-bottom:12px; }
+
+    .score-box {
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      background: #f9f9f9;
+      border: 1px solid #ddd;
+    }
+    .score-item {
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+    .feedback {
+      font-style: italic;
+      color: #555;
+      margin-top: 6px;
+    }
   </style>
 </head>
 <body>
@@ -118,7 +135,10 @@
       <div id="status" class="status"></div>
 
       <h3>Transcript:</h3>
-      <div id="transcriptBox" class="transcript">[Transcript will appear here]</div>
+      <div id="transcriptBox" class="card">[Transcript will appear here]</div>
+
+      <h3>Feedback & Scores:</h3>
+      <div id="scoreBox" class="card">[Scores will appear here]</div>
     </div>
 
     <!-- Right panel: History -->
@@ -135,6 +155,7 @@ const stopBtn = document.getElementById('stopBtn');
 const status = document.getElementById('status');
 const candidate = document.getElementById('candidate');
 const transcriptBox = document.getElementById('transcriptBox');
+const scoreBox = document.getElementById('scoreBox');
 const historyContainer = document.getElementById('history');
 const roleSelect = document.getElementById('roleSelect');
 const agendaBox = document.getElementById('agendaBox');
@@ -206,7 +227,7 @@ startBtn.addEventListener('click', async ()=>{
   stopBtn.disabled = false;
   status.textContent = 'Recording...';
 
-  // start countdown (convert minutes → seconds)
+  // start countdown
   remainingSeconds = (parseInt(timePerAnswer.value) || 2) * 60;
   updateTimerDisplay(remainingSeconds);
   clearInterval(countdownInterval);
@@ -249,6 +270,7 @@ async function onStop(){
     const data = await res.json();
     status.textContent = 'Uploaded successfully!';
     transcriptBox.textContent = data.transcript || '[No transcript received]';
+    renderScores(data.score);
     loadHistory();
   } catch(err){
     status.textContent = 'Upload failed: ' + err.message;
@@ -256,6 +278,23 @@ async function onStop(){
     startBtn.disabled = false;
     stopBtn.disabled = true;
   }
+}
+
+function renderScores(score) {
+  if(!score) {
+    scoreBox.textContent = "[No scores available]";
+    return;
+  }
+  if(typeof score === "string"){ // in case API returns string JSON
+    try { score = JSON.parse(score); } catch(e){}
+  }
+  let html = "";
+  if(score.communication !== undefined) html += `<div class="score-item"><strong>Communication:</strong> ${score.communication}</div>`;
+  if(score.confidence !== undefined) html += `<div class="score-item"><strong>Confidence:</strong> ${score.confidence}</div>`;
+  if(score.structure !== undefined) html += `<div class="score-item"><strong>Structure:</strong> ${score.structure}</div>`;
+  if(score.soft_skills !== undefined) html += `<div class="score-item"><strong>Soft Skills:</strong> ${score.soft_skills}</div>`;
+  if(score.feedback) html += `<div class="feedback"><strong>Feedback:</strong> ${score.feedback}</div>`;
+  scoreBox.innerHTML = html || "[No scores available]";
 }
 
 function updateTimerDisplay(seconds) {
@@ -273,12 +312,27 @@ async function loadHistory() {
     historyContainer.innerHTML = '';
     data.history.forEach(item => {
       const div = document.createElement('div');
-      div.className = 'history-card';
+      div.className = 'history-card card';
+      let scoreHtml = "";
+      if(item.score){
+        let score = item.score;
+        if(typeof score === "string"){ try{ score = JSON.parse(score);}catch(e){} }
+        scoreHtml = `
+          <div class="score-box">
+            <div class="score-item"><strong>Communication:</strong> ${score.communication ?? '-'}</div>
+            <div class="score-item"><strong>Confidence:</strong> ${score.confidence ?? '-'}</div>
+            <div class="score-item"><strong>Structure:</strong> ${score.structure ?? '-'}</div>
+            <div class="score-item"><strong>Soft Skills:</strong> ${score.soft_skills ?? '-'}</div>
+            <div class="feedback"><strong>Feedback:</strong> ${score.feedback ?? '-'}</div>
+          </div>
+        `;
+      }
       div.innerHTML = `
         <strong>Date:</strong> ${new Date(item.timestamp).toLocaleString()}<br>
         <strong>Role:</strong> ${item.role || 'General'}<br>
         <strong>Transcript:</strong> ${item.transcript}<br>
         <strong>File:</strong> <a href="${item.file_path}" target="_blank">View/Download</a>
+        ${scoreHtml}
       `;
       historyContainer.appendChild(div);
     });
