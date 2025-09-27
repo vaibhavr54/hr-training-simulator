@@ -18,6 +18,7 @@
     }
 
     h2, h3 { color: #2c3e50; }
+    h2 {margin-bottom: 40px; font-size: 35px; text-align:center;}
 
     .container { display: flex; gap: 40px; flex-wrap: wrap; }
     .left-panel, .right-panel { flex: 1; min-width: 320px; }
@@ -33,7 +34,7 @@
     button {
       padding: 10px 16px;
       font-size: 16px;
-      margin-right: 6px;
+      margin: 4px;
       border: none;
       border-radius: 5px;
       cursor: pointer;
@@ -57,7 +58,7 @@
       word-wrap: break-word;
     }
 
-    .history-card { border-left: 6px solid #3498db; }
+    .history-card { border-left: 6px solid #3498db; cursor: pointer; margin-bottom: 6px; }
     .history-card a { color: #2980b9; text-decoration: none; }
     .history-card a:hover { text-decoration: underline; }
 
@@ -89,13 +90,39 @@
       color: #555;
       margin-top: 6px;
     }
+
+    .right-panel { max-height: 100vh; overflow-y: auto; }
+
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    #historySort {
+      width: auto;
+      min-width: 120px;
+      padding: 4px 8px;
+    }
+
+    .selected-history {
+      border-left: 6px solid #e67e22;
+      background-color: #fdf2e9;
+    }
+
+    /* Center buttons and status container */
+    .button-status-container {
+      text-align: center;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
   <h2>AI-Powered HR Training Simulator</h2>
 
   <div class="container">
-    <!-- Left panel: Video + Recording -->
+    <!-- Left Panel -->
     <div class="left-panel">
       <label>Candidate Name:
         <input id="candidate" placeholder="Enter your name"/>
@@ -107,10 +134,25 @@
           <option value="Software Engineer">Software Engineer</option>
           <option value="Data Scientist">Data Scientist</option>
           <option value="Product Manager">Product Manager</option>
+          <option value="Marketing Manager">Marketing Manager</option>
+          <option value="Sales Executive">Sales Executive</option>
+          <option value="UX Designer">UX Designer</option>
+          <option value="QA Engineer">QA Engineer</option>
+          <option value="Business Analyst">Business Analyst</option>
+          <option value="HR Specialist">HR Specialist</option>
+          <option value="Operations Manager">Operations Manager</option>
+          <option value="Finance Analyst">Finance Analyst</option>
+          <option value="Content Writer">Content Writer</option>
+          <option value="Data Engineer">Data Engineer</option>
+          <option value="Project Manager">Project Manager</option>
         </select>
       </label>
 
       <div class="agenda" id="agendaBox"></div>
+
+      <label>Current Question:
+        <div id="currentQuestion" class="card">[Question will appear here]</div>
+      </label>
 
       <div class="meta-row">
         <div>
@@ -125,26 +167,32 @@
 
       <video id="preview" autoplay playsinline muted></video>
 
-      <div>
+      <!-- Centered buttons + status -->
+      <div class="button-status-container">
         <button id="startBtn">Start Recording</button>
         <button id="stopBtn" disabled>Stop & Upload</button>
+        <div id="status" class="status"></div>
       </div>
+    </div>
 
-      <div id="status" class="status"></div>
-
-      <h3>Transcript:</h3>
-      <div id="transcriptBox" class="card">[Transcript will appear here]</div>
-
+    <!-- Right Panel -->
+    <div class="right-panel">
       <h3>Feedback & Scores:</h3>
       <div id="scoreBox" class="card">
         <canvas id="scoreChart"></canvas>
         <div id="feedbackText" class="feedback"></div>
       </div>
-    </div>
 
-    <!-- Right panel: History -->
-    <div class="right-panel">
-      <h3>Past Attempts:</h3>
+      <h3>Transcript:</h3>
+      <div id="transcriptBox" class="card">[Transcript will appear here]</div>
+
+      <div class="history-header">
+        <h3>Past Attempts:</h3>
+        <select id="historySort">
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+        </select>
+      </div>
       <div id="history"></div>
     </div>
   </div>
@@ -160,8 +208,10 @@ const scoreBox = document.getElementById('scoreBox');
 const historyContainer = document.getElementById('history');
 const roleSelect = document.getElementById('roleSelect');
 const agendaBox = document.getElementById('agendaBox');
+const currentQuestionDiv = document.getElementById('currentQuestion');
 const timePerAnswer = document.getElementById('timePerAnswer');
 const timerDisplay = document.getElementById('timerDisplay');
+const historySort = document.getElementById('historySort');
 
 let mediaStream = null;
 let recorder = null;
@@ -170,219 +220,166 @@ let countdownInterval = null;
 let remainingSeconds = 0;
 let scoreChart = null;
 
-// Sample agendas per role
+// --- 15 roles x 30 questions each ---
 const agendas = {
-  "General": [
-    "Tell me about yourself.",
-    "Why are you interested in this role?",
-    "Describe a challenge you faced and how you solved it."
-  ],
-  "Software Engineer": [
-    "Walk me through a recent project you built.",
-    "How do you ensure code quality?",
-    "Explain a bug you fixed and how you diagnosed it."
-  ],
-  "Data Scientist": [
-    "Describe a model you deployed to production.",
-    "How do you handle missing data?",
-    "Explain a time you used data to influence a decision."
-  ],
-  "Product Manager": [
-    "Tell me about a product you launched.",
-    "How do you prioritize features?",
-    "How do you handle stakeholder conflicts?"
-  ]
+  "General": Array.from({length:30},(_,i)=>`General Q${i+1}: Describe yourself or your career goals.`),
+  "Software Engineer": Array.from({length:30},(_,i)=>`Software Engineer Q${i+1}: Explain a coding challenge you faced.`),
+  "Data Scientist": Array.from({length:30},(_,i)=>`Data Scientist Q${i+1}: Discuss a model you implemented.`),
+  "Product Manager": Array.from({length:30},(_,i)=>`Product Manager Q${i+1}: Talk about a product launch experience.`),
+  "Marketing Manager": Array.from({length:30},(_,i)=>`Marketing Manager Q${i+1}: How would you increase brand awareness?`),
+  "Sales Executive": Array.from({length:30},(_,i)=>`Sales Executive Q${i+1}: Describe your sales pitch strategy.`),
+  "UX Designer": Array.from({length:30},(_,i)=>`UX Designer Q${i+1}: Explain a UX problem you solved.`),
+  "QA Engineer": Array.from({length:30},(_,i)=>`QA Engineer Q${i+1}: How do you ensure software quality?`),
+  "Business Analyst": Array.from({length:30},(_,i)=>`Business Analyst Q${i+1}: Discuss requirements gathering.`),
+  "HR Specialist": Array.from({length:30},(_,i)=>`HR Specialist Q${i+1}: How do you handle conflicts?`),
+  "Operations Manager": Array.from({length:30},(_,i)=>`Operations Manager Q${i+1}: Describe an operational improvement.`),
+  "Finance Analyst": Array.from({length:30},(_,i)=>`Finance Analyst Q${i+1}: Talk about financial reporting experience.`),
+  "Content Writer": Array.from({length:30},(_,i)=>`Content Writer Q${i+1}: Explain content strategy approach.`),
+  "Data Engineer": Array.from({length:30},(_,i)=>`Data Engineer Q${i+1}: Describe a data pipeline you built.`),
+  "Project Manager": Array.from({length:30},(_,i)=>`Project Manager Q${i+1}: Talk about project planning and delivery.`)
 };
 
-function renderAgenda(role) {
+// Get a random question for a role
+function getRandomQuestion(role){
   const list = agendas[role] || agendas["General"];
-  agendaBox.innerHTML = "<strong>Agenda / Sample Questions:</strong><ul>" +
-    list.map(q => `<li>${q}</li>`).join("") +
-    "</ul>";
+  const idx = Math.floor(Math.random() * list.length);
+  return list[idx];
 }
 
-renderAgenda(roleSelect.value);
+// Render agenda
+function renderAgenda(role){
+  const list = agendas[role] || agendas["General"];
+}
 
+// Initialize media
 async function initMedia(){
-  try {
-    mediaStream = await navigator.mediaDevices.getUserMedia({
-      video: true,
-      audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 }
-    });
+  try{
+    mediaStream = await navigator.mediaDevices.getUserMedia({video:true,audio:{echoCancellation:true,noiseSuppression:true,sampleRate:44100}});
     preview.srcObject = mediaStream;
-    status.textContent = 'Camera & mic ready';
-  } catch(err) {
-    alert('Cannot access camera/mic: ' + err.message);
-  }
+    status.textContent='Camera & mic ready';
+  }catch(err){ alert('Cannot access camera/mic: '+err.message); }
 }
 
-// Start Recording
+// Timer display
+function updateTimerDisplay(seconds){
+  const mm=String(Math.floor(seconds/60)).padStart(2,'0');
+  const ss=String(seconds%60).padStart(2,'0');
+  timerDisplay.textContent=`${mm}:${ss}`;
+}
+
+// Render score chart
+function renderScores(score){
+  if(!score){ document.getElementById("feedbackText").textContent="[No scores available]"; return;}
+  if(typeof score==="string"){ try{ score=JSON.parse(score);}catch(e){} }
+  const labels=["Communication","Confidence","Structure","Soft Skills"];
+  const values=[score.communication??0,score.confidence??0,score.structure??0,score.soft_skills??0];
+  if(scoreChart) scoreChart.destroy();
+  const ctx=document.getElementById("scoreChart").getContext("2d");
+  scoreChart=new Chart(ctx,{type:"bar",data:{labels,datasets:[{label:"Score (0-100)",data:values,backgroundColor:["#3498db","#2ecc71","#f39c12","#9b59b6"]}]},options:{responsive:true,scales:{y:{beginAtZero:true,max:100}}}});
+  document.getElementById("feedbackText").innerHTML=`<strong>Feedback:</strong> ${score.feedback??'-'}`;
+}
+
+// --- Load past attempts
+async function loadHistory(){
+  const candidateName=candidate.value||'unknown';
+  if(!candidateName) return;
+  try{
+    const res=await fetch(`/history/${encodeURIComponent(candidateName)}`);
+    const data=await res.json();
+    let hist=data.history||[];
+    if(historySort.value==='newest') hist.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+    else hist.sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+    historyContainer.innerHTML='';
+    hist.forEach((item,i)=>{
+      const div=document.createElement('div');
+      div.className='history-card card';
+      let scoreHtml='';
+      if(item.score){
+        let score=item.score;
+        if(typeof score==="string"){ try{ score=JSON.parse(score);}catch(e){} }
+        scoreHtml=`<div class="score-box">
+          <div><strong>Communication:</strong> ${score.communication??'-'}</div>
+          <div><strong>Confidence:</strong> ${score.confidence??'-'}</div>
+          <div><strong>Structure:</strong> ${score.structure??'-'}</div>
+          <div><strong>Soft Skills:</strong> ${score.soft_skills??'-'}</div>
+          <div class="feedback"><strong>Feedback:</strong> ${score.feedback??'-'}</div>
+        </div>`;
+      }
+      div.innerHTML=`<strong>Date:</strong> ${new Date(item.timestamp).toLocaleString()}<br>
+        <strong>Role:</strong> ${item.role||'General'}<br>
+        <strong>Transcript:</strong> ${item.transcript}<br>
+        <strong>File:</strong> <a href="${item.file_path}" target="_blank">View/Download</a>
+        ${scoreHtml}`;
+      div.addEventListener('click',()=>{
+        document.querySelectorAll('.history-card').forEach(c=>c.classList.remove('selected-history'));
+        div.classList.add('selected-history');
+        if(item.score) renderScores(item.score);
+        transcriptBox.textContent=item.transcript;
+      });
+      historyContainer.appendChild(div);
+    });
+  }catch(err){ console.error('Failed to load history:', err); }
+}
+
+// --- Start / Stop recording ---
 startBtn.addEventListener('click', async ()=>{
   if(!mediaStream) await initMedia();
-  chunks = [];
-  const options = { mimeType: 'video/webm;codecs=vp8,opus' };
-  recorder = new MediaRecorder(mediaStream, options);
-  recorder.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
-  recorder.onstop = onStop;
+  chunks=[];
+  recorder=new MediaRecorder(mediaStream,{mimeType:'video/webm;codecs=vp8,opus'});
+  recorder.ondataavailable=e=>{if(e.data && e.data.size) chunks.push(e.data);}
+  recorder.onstop=onStop;
   recorder.start();
-  startBtn.disabled = true;
-  stopBtn.disabled = false;
-  status.textContent = 'Recording...';
-
-  // start countdown
-  remainingSeconds = (parseInt(timePerAnswer.value) || 2) * 60;
+  startBtn.disabled=true; stopBtn.disabled=false;
+  status.textContent='Recording...';
+  remainingSeconds=(parseInt(timePerAnswer.value)||2)*60;
   updateTimerDisplay(remainingSeconds);
   clearInterval(countdownInterval);
-  countdownInterval = setInterval(() => {
+  countdownInterval=setInterval(()=>{
     remainingSeconds--;
     updateTimerDisplay(remainingSeconds);
-    if (remainingSeconds <= 0) {
-      if(recorder && recorder.state !== 'inactive') recorder.stop();
-      clearInterval(countdownInterval);
-      status.textContent = 'Time up — uploading...';
-    }
-  }, 1000);
-
+    if(remainingSeconds<=0){ if(recorder && recorder.state!=='inactive') recorder.stop(); clearInterval(countdownInterval); status.textContent='Time up — uploading...'; }
+  },1000);
   loadHistory();
 });
 
-// Stop Recording & Upload
+// Stop recording
 stopBtn.addEventListener('click', ()=>{
-  if(recorder && recorder.state !== 'inactive'){
-    recorder.stop();
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-    status.textContent = 'Stopping...';
-    clearInterval(countdownInterval);
-  }
+  if(recorder && recorder.state!=='inactive'){ recorder.stop(); startBtn.disabled=false; stopBtn.disabled=true; status.textContent='Stopping...'; clearInterval(countdownInterval);}
 });
 
+// Handle upload and next question
 async function onStop(){
-  clearInterval(countdownInterval);
-  updateTimerDisplay(0);
-  const blob = new Blob(chunks, { type: 'video/webm' });
-  const form = new FormData();
-  form.append('file', blob, 'response.webm');
-  form.append('candidate', candidate.value || 'unknown');
-  form.append('role', roleSelect.value || 'General');
-
-  status.textContent = 'Uploading...';
-  try {
-    const res = await fetch('/upload-audio', { method: 'POST', body: form });
-    const data = await res.json();
-    status.textContent = 'Uploaded successfully!';
-    transcriptBox.textContent = data.transcript || '[No transcript received]';
+  clearInterval(countdownInterval); updateTimerDisplay(0);
+  const blob=new Blob(chunks,{type:'video/webm'});
+  const form=new FormData();
+  form.append('file',blob,'response.webm');
+  form.append('candidate',candidate.value||'unknown');
+  form.append('role',roleSelect.value||'General');
+  status.textContent='Uploading...';
+  try{
+    const res=await fetch('/upload-audio',{method:'POST',body:form});
+    const data=await res.json();
+    status.textContent='Uploaded successfully!';
+    transcriptBox.textContent=data.transcript||'[No transcript received]';
     renderScores(data.score);
     loadHistory();
-  } catch(err){
-    status.textContent = 'Upload failed: ' + err.message;
-  } finally {
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
+  }catch(err){ status.textContent='Upload failed: '+err.message; } finally{
+    startBtn.disabled=false; stopBtn.disabled=true;
+    // Show next question
+    currentQuestionDiv.textContent = getRandomQuestion(roleSelect.value);
   }
 }
 
-function renderScores(score) {
-  if (!score) {
-    document.getElementById("feedbackText").textContent = "[No scores available]";
-    return;
-  }
-  if (typeof score === "string") {
-    try { score = JSON.parse(score); } catch(e){}
-  }
-
-  const labels = ["Communication", "Confidence", "Structure", "Soft Skills"];
-  const values = [
-    score.communication ?? 0,
-    score.confidence ?? 0,
-    score.structure ?? 0,
-    score.soft_skills ?? 0
-  ];
-
-  // Destroy old chart if exists
-  if (scoreChart) {
-    scoreChart.destroy();
-  }
-
-  const ctx = document.getElementById("scoreChart").getContext("2d");
-  scoreChart = new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels: labels,
-      datasets: [{
-        label: "Score (0-100)",
-        data: values,
-        backgroundColor: ["#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 100
-        }
-      }
-    }
-  });
-
-  document.getElementById("feedbackText").innerHTML =
-    `<strong>Feedback:</strong> ${score.feedback ?? '-'}`;
-}
-
-function updateTimerDisplay(seconds) {
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const ss = String(seconds % 60).padStart(2, '0');
-  timerDisplay.textContent = `${mm}:${ss}`;
-}
-
-async function loadHistory() {
-  const candidateName = candidate.value || 'unknown';
-  if(!candidateName) return;
-  try {
-    const res = await fetch(`/history/${encodeURIComponent(candidateName)}`);
-    const data = await res.json();
-    historyContainer.innerHTML = '';
-    data.history.forEach(item => {
-      const div = document.createElement('div');
-      div.className = 'history-card card';
-      let scoreHtml = "";
-      if(item.score){
-        let score = item.score;
-        if(typeof score === "string"){ try{ score = JSON.parse(score);}catch(e){} }
-        scoreHtml = `
-          <div class="score-box">
-            <div><strong>Communication:</strong> ${score.communication ?? '-'}</div>
-            <div><strong>Confidence:</strong> ${score.confidence ?? '-'}</div>
-            <div><strong>Structure:</strong> ${score.structure ?? '-'}</div>
-            <div><strong>Soft Skills:</strong> ${score.soft_skills ?? '-'}</div>
-            <div class="feedback"><strong>Feedback:</strong> ${score.feedback ?? '-'}</div>
-          </div>
-        `;
-      }
-      div.innerHTML = `
-        <strong>Date:</strong> ${new Date(item.timestamp).toLocaleString()}<br>
-        <strong>Role:</strong> ${item.role || 'General'}<br>
-        <strong>Transcript:</strong> ${item.transcript}<br>
-        <strong>File:</strong> <a href="${item.file_path}" target="_blank">View/Download</a>
-        ${scoreHtml}
-      `;
-      historyContainer.appendChild(div);
-    });
-  } catch(err){
-    console.error('Failed to load history:', err);
-  }
-}
-
-roleSelect.addEventListener('change', () => renderAgenda(roleSelect.value));
-
-let historyTimer = null;
-candidate.addEventListener('input', () => {
-  clearTimeout(historyTimer);
-  historyTimer = setTimeout(loadHistory, 700);
+// --- Initial setup
+renderAgenda(roleSelect.value);
+currentQuestionDiv.textContent = getRandomQuestion(roleSelect.value);
+roleSelect.addEventListener('change',()=>{
+  renderAgenda(roleSelect.value);
+  currentQuestionDiv.textContent = getRandomQuestion(roleSelect.value);
 });
-
-window.addEventListener('load', initMedia);
+candidate.addEventListener('input',()=>{ setTimeout(loadHistory,700); });
+historySort.addEventListener('change',loadHistory);
+window.addEventListener('load',initMedia);
 </script>
 </body>
 </html>
