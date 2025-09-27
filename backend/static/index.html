@@ -18,7 +18,7 @@
     }
 
     h2, h3 { color: #2c3e50; }
-    h2 {margin-bottom: 40px; font-size: 35px; text-align:center;}
+    h2 {margin-bottom: 40px; font-size: 35px;}
 
     .container { display: flex; gap: 40px; flex-wrap: wrap; }
     .left-panel, .right-panel { flex: 1; min-width: 320px; }
@@ -233,10 +233,10 @@ const agendas = {
   "Business Analyst": Array.from({length:30},(_,i)=>`Discuss requirements gathering.`),
   "HR Specialist": Array.from({length:30},(_,i)=>`How do you handle conflicts?`),
   "Operations Manager": Array.from({length:30},(_,i)=>`Describe an operational improvement.`),
-  "Finance Analyst": Array.from({length:30},(_,i)=>`Finance Analyst Q${i+1}: Talk about financial reporting experience.`),
-  "Content Writer": Array.from({length:30},(_,i)=>`Content Writer Q${i+1}: Explain content strategy approach.`),
-  "Data Engineer": Array.from({length:30},(_,i)=>`Data Engineer Q${i+1}: Describe a data pipeline you built.`),
-  "Project Manager": Array.from({length:30},(_,i)=>`Project Manager Q${i+1}: Talk about project planning and delivery.`)
+  "Finance Analyst": Array.from({length:30},(_,i)=>`Talk about financial reporting experience.`),
+  "Content Writer": Array.from({length:30},(_,i)=>`Explain content strategy approach.`),
+  "Data Engineer": Array.from({length:30},(_,i)=>`Describe a data pipeline you built.`),
+  "Project Manager": Array.from({length:30},(_,i)=>`Talk about project planning and delivery.`)
 };
 
 // Get a random question for a role
@@ -257,7 +257,7 @@ async function initMedia(){
     mediaStream = await navigator.mediaDevices.getUserMedia({video:true,audio:{echoCancellation:true,noiseSuppression:true,sampleRate:44100}});
     preview.srcObject = mediaStream;
     status.textContent='Camera & mic ready';
-  }catch(err){ alert('Cannot access camera/mic: '+err.message);}
+  }catch(err){ alert('Cannot access camera/mic: '+err.message); }
 }
 
 // Timer display
