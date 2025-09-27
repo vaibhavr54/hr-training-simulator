@@ -18,7 +18,7 @@
     }
 
     h2, h3 { color: #2c3e50; }
-    h2 {margin-bottom: 40px; font-size: 35px; text-align:center;}
+    h2 {margin-bottom: 40px; font-size: 35px;}
 
     .container { display: flex; gap: 40px; flex-wrap: wrap; }
     .left-panel, .right-panel { flex: 1; min-width: 320px; }
@@ -222,21 +222,21 @@ let scoreChart = null;
 
 // --- 15 roles x 30 questions each ---
 const agendas = {
-  "General": Array.from({length:30},(_,i)=>`General Q${i+1}: Describe yourself or your career goals.`),
-  "Software Engineer": Array.from({length:30},(_,i)=>`Software Engineer Q${i+1}: Explain a coding challenge you faced.`),
-  "Data Scientist": Array.from({length:30},(_,i)=>`Data Scientist Q${i+1}: Discuss a model you implemented.`),
-  "Product Manager": Array.from({length:30},(_,i)=>`Product Manager Q${i+1}: Talk about a product launch experience.`),
-  "Marketing Manager": Array.from({length:30},(_,i)=>`Marketing Manager Q${i+1}: How would you increase brand awareness?`),
-  "Sales Executive": Array.from({length:30},(_,i)=>`Sales Executive Q${i+1}: Describe your sales pitch strategy.`),
-  "UX Designer": Array.from({length:30},(_,i)=>`UX Designer Q${i+1}: Explain a UX problem you solved.`),
-  "QA Engineer": Array.from({length:30},(_,i)=>`QA Engineer Q${i+1}: How do you ensure software quality?`),
-  "Business Analyst": Array.from({length:30},(_,i)=>`Business Analyst Q${i+1}: Discuss requirements gathering.`),
-  "HR Specialist": Array.from({length:30},(_,i)=>`HR Specialist Q${i+1}: How do you handle conflicts?`),
-  "Operations Manager": Array.from({length:30},(_,i)=>`Operations Manager Q${i+1}: Describe an operational improvement.`),
-  "Finance Analyst": Array.from({length:30},(_,i)=>`Finance Analyst Q${i+1}: Talk about financial reporting experience.`),
-  "Content Writer": Array.from({length:30},(_,i)=>`Content Writer Q${i+1}: Explain content strategy approach.`),
-  "Data Engineer": Array.from({length:30},(_,i)=>`Data Engineer Q${i+1}: Describe a data pipeline you built.`),
-  "Project Manager": Array.from({length:30},(_,i)=>`Project Manager Q${i+1}: Talk about project planning and delivery.`)
+  "General": Array.from({length:30},(_,i)=>`Describe yourself or your career goals.`),
+  "Software Engineer": Array.from({length:30},(_,i)=>`Explain a coding challenge you faced.`),
+  "Data Scientist": Array.from({length:30},(_,i)=>`Discuss a model you implemented.`),
+  "Product Manager": Array.from({length:30},(_,i)=>`Talk about a product launch experience.`),
+  "Marketing Manager": Array.from({length:30},(_,i)=>`How would you increase brand awareness?`),
+  "Sales Executive": Array.from({length:30},(_,i)=>`Describe your sales pitch strategy.`),
+  "UX Designer": Array.from({length:30},(_,i)=>`Explain a UX problem you solved.`),
+  "QA Engineer": Array.from({length:30},(_,i)=>`How do you ensure software quality?`),
+  "Business Analyst": Array.from({length:30},(_,i)=>`Discuss requirements gathering.`),
+  "HR Specialist": Array.from({length:30},(_,i)=>`How do you handle conflicts?`),
+  "Operations Manager": Array.from({length:30},(_,i)=>`Describe an operational improvement.`),
+  "Finance Analyst": Array.from({length:30},(_,i)=>`Talk about financial reporting experience.`),
+  "Content Writer": Array.from({length:30},(_,i)=>`Explain content strategy approach.`),
+  "Data Engineer": Array.from({length:30},(_,i)=>`Describe a data pipeline you built.`),
+  "Project Manager": Array.from({length:30},(_,i)=>`Talk about project planning and delivery.`)
 };
 
 // Get a random question for a role
