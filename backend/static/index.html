@@ -6,6 +6,8 @@
 
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     body {
@@ -82,10 +84,6 @@
       background: #f9f9f9;
       border: 1px solid #ddd;
     }
-    .score-item {
-      margin-bottom: 4px;
-      font-size: 14px;
-    }
     .feedback {
       font-style: italic;
       color: #555;
@@ -138,7 +136,10 @@
       <div id="transcriptBox" class="card">[Transcript will appear here]</div>
 
       <h3>Feedback & Scores:</h3>
-      <div id="scoreBox" class="card">[Scores will appear here]</div>
+      <div id="scoreBox" class="card">
+        <canvas id="scoreChart"></canvas>
+        <div id="feedbackText" class="feedback"></div>
+      </div>
     </div>
 
     <!-- Right panel: History -->
@@ -167,6 +168,7 @@ let recorder = null;
 let chunks = [];
 let countdownInterval = null;
 let remainingSeconds = 0;
+let scoreChart = null;
 
 // Sample agendas per role
 const agendas = {
@@ -281,20 +283,51 @@ async function onStop(){
 }
 
 function renderScores(score) {
-  if(!score) {
-    scoreBox.textContent = "[No scores available]";
+  if (!score) {
+    document.getElementById("feedbackText").textContent = "[No scores available]";
     return;
   }
-  if(typeof score === "string"){ // in case API returns string JSON
+  if (typeof score === "string") {
     try { score = JSON.parse(score); } catch(e){}
   }
-  let html = "";
-  if(score.communication !== undefined) html += `<div class="score-item"><strong>Communication:</strong> ${score.communication}</div>`;
-  if(score.confidence !== undefined) html += `<div class="score-item"><strong>Confidence:</strong> ${score.confidence}</div>`;
-  if(score.structure !== undefined) html += `<div class="score-item"><strong>Structure:</strong> ${score.structure}</div>`;
-  if(score.soft_skills !== undefined) html += `<div class="score-item"><strong>Soft Skills:</strong> ${score.soft_skills}</div>`;
-  if(score.feedback) html += `<div class="feedback"><strong>Feedback:</strong> ${score.feedback}</div>`;
-  scoreBox.innerHTML = html || "[No scores available]";
+
+  const labels = ["Communication", "Confidence", "Structure", "Soft Skills"];
+  const values = [
+    score.communication ?? 0,
+    score.confidence ?? 0,
+    score.structure ?? 0,
+    score.soft_skills ?? 0
+  ];
+
+  // Destroy old chart if exists
+  if (scoreChart) {
+    scoreChart.destroy();
+  }
+
+  const ctx = document.getElementById("scoreChart").getContext("2d");
+  scoreChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Score (0-100)",
+        data: values,
+        backgroundColor: ["#3498db", "#2ecc71", "#f39c12", "#9b59b6"]
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100
+        }
+      }
+    }
+  });
+
+  document.getElementById("feedbackText").innerHTML =
+    `<strong>Feedback:</strong> ${score.feedback ?? '-'}`;
 }
 
 function updateTimerDisplay(seconds) {
@@ -319,10 +352,10 @@ async function loadHistory() {
         if(typeof score === "string"){ try{ score = JSON.parse(score);}catch(e){} }
         scoreHtml = `
           <div class="score-box">
-            <div class="score-item"><strong>Communication:</strong> ${score.communication ?? '-'}</div>
-            <div class="score-item"><strong>Confidence:</strong> ${score.confidence ?? '-'}</div>
-            <div class="score-item"><strong>Structure:</strong> ${score.structure ?? '-'}</div>
-            <div class="score-item"><strong>Soft Skills:</strong> ${score.soft_skills ?? '-'}</div>
+            <div><strong>Communication:</strong> ${score.communication ?? '-'}</div>
+            <div><strong>Confidence:</strong> ${score.confidence ?? '-'}</div>
+            <div><strong>Structure:</strong> ${score.structure ?? '-'}</div>
+            <div><strong>Soft Skills:</strong> ${score.soft_skills ?? '-'}</div>
             <div class="feedback"><strong>Feedback:</strong> ${score.feedback ?? '-'}</div>
           </div>
         `;
