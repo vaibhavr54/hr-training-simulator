@@ -154,7 +154,7 @@ function renderScores(score){
   document.getElementById("feedbackText").innerHTML=`<strong>Feedback:</strong> ${score.feedback??"-"}`;
 }
 
-// --- Load History ---
+// --- Load History with clickable links ---
 async function loadHistory() {
   if (!candidate.value) return;
   try {
@@ -203,6 +203,20 @@ async function loadHistory() {
         attemptDiv.innerHTML = `<strong>${new Date(item.timestamp).toLocaleTimeString()}</strong>
           <br><em>Q:</em> ${item.last_question || "-"}<br>
           <em>A:</em> ${item.transcript || "-"}`;
+
+        // --- Add clickable link below answer ---
+        const link = document.createElement("div");
+        link.style.fontSize = "14px";
+        link.style.color = "#2980b9";
+        link.style.cursor = "pointer";
+        link.textContent = "[View this attempt]";
+        link.addEventListener("click", () => {
+          lastTranscript = item.transcript;
+          transcriptBox.textContent = item.transcript;
+          renderScores(item.score); // Use the saved score
+        });
+
+        attemptDiv.appendChild(link);
         sessionContent.appendChild(attemptDiv);
       });
 
