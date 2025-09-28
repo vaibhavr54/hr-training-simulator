@@ -14,6 +14,7 @@
     button{padding:10px 16px;font-size:16px;margin:4px;border:none;border-radius:5px;cursor:pointer;transition:all .2s;}
     #startBtn{background:#4CAF50;color:#fff;}#startBtn:hover{background:#45a049;}
     #stopBtn{background:#f44336;color:#fff;}#stopBtn:hover{background:#e53935;}
+    #sortBtn{width:150px;}
     .status{font-weight:bold;margin-top:6px;color:#27ae60;}
     .card{background:#fff;padding:12px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);margin-bottom:12px;max-width:100%;word-wrap:break-word;}
     label{display:block;margin-bottom:8px;font-weight:500;}
@@ -87,7 +88,11 @@
       </div>
       <h3>Transcript:</h3>
       <div id="transcriptBox" class="card">[Transcript will appear here]</div>
-      <h3>Past Attempts:</h3>
+      
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+        <h3 style="margin:0;">Past Attempts:</h3>
+        <button id="sortBtn">Newest first</button>
+      </div>
       <div id="history"></div>
     </div>
   </div>
@@ -104,6 +109,7 @@ const currentQuestionDiv=document.getElementById('currentQuestion');
 const timePerAnswer=document.getElementById('timePerAnswer');
 const timerDisplay=document.getElementById('timerDisplay');
 const historyContainer=document.getElementById('history');
+const sortBtn=document.getElementById('sortBtn');
 
 let mediaStream=null,recorder=null,chunks=[],countdownInterval=null,remainingSeconds=0,scoreChart=null;
 let lastQuestion=null,lastTranscript=null;
@@ -144,10 +150,11 @@ function renderScores(score){
   if(scoreChart)scoreChart.destroy();
   const ctx=document.getElementById("scoreChart").getContext("2d");
   scoreChart=new Chart(ctx,{type:"bar",data:{labels,datasets:[{label:"Score (0-100)",data:values,backgroundColor:["#3498db","#2ecc71","#f39c12","#9b59b6"]}]},options:{scales:{y:{beginAtZero:true,max:100}}}});
+
   document.getElementById("feedbackText").innerHTML=`<strong>Feedback:</strong> ${score.feedback??"-"}`;
 }
 
-// --- Load History with session grouping & sorting ---
+// --- Load History ---
 async function loadHistory() {
   if (!candidate.value) return;
   try {
@@ -155,14 +162,12 @@ async function loadHistory() {
     const data = await res.json();
     historyContainer.innerHTML = "";
 
-    // Sort attempts by timestamp
     const attempts = (data.history || []).sort((a, b) => {
       return historySortOrder === "newest"
         ? new Date(b.timestamp) - new Date(a.timestamp)
         : new Date(a.timestamp) - new Date(b.timestamp);
     });
 
-    // Group attempts by session (role + date)
     const sessionsMap = {};
     attempts.forEach((item) => {
       const sessionKey = `${item.role || "General"}|${new Date(item.timestamp).toDateString()}`;
@@ -170,7 +175,6 @@ async function loadHistory() {
       sessionsMap[sessionKey].push(item);
     });
 
-    // Render each session
     Object.keys(sessionsMap).forEach((key) => {
       const sessionAttempts = sessionsMap[key];
       const [role, dateStr] = key.split("|");
@@ -180,7 +184,6 @@ async function loadHistory() {
       sessionDiv.style.marginBottom = "12px";
       sessionDiv.style.padding = "8px";
 
-      // Session header with toggle
       const header = document.createElement("div");
       header.style.display = "flex";
       header.style.justifyContent = "space-between";
@@ -190,9 +193,8 @@ async function loadHistory() {
       header.innerHTML = `${dateStr} - ${role} <span style="font-size:14px;color:#555;">(click to toggle)</span>`;
 
       const sessionContent = document.createElement("div");
-      sessionContent.style.display = "none"; // collapsed by default
+      sessionContent.style.display = "none";
 
-      // List attempts
       sessionAttempts.forEach((item) => {
         const attemptDiv = document.createElement("div");
         attemptDiv.style.borderTop = "1px solid #eee";
@@ -218,16 +220,11 @@ async function loadHistory() {
 }
 
 // Sort button
-const sortBtn = document.createElement("button");
-sortBtn.textContent = "Newest first";
-sortBtn.style.width = "120px";
-sortBtn.style.marginBottom = "8px";
 sortBtn.onclick = () => {
   historySortOrder = historySortOrder === "newest" ? "oldest" : "newest";
   sortBtn.textContent = historySortOrder === "newest" ? "Newest first" : "Oldest first";
   loadHistory();
 };
-historyContainer.parentNode.insertBefore(sortBtn, historyContainer);
 
 // --- Recording ---
 startBtn.addEventListener("click",async()=>{
