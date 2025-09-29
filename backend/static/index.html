@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>AI-Powered HR Training Simulator</title>
+  <title>AI-Powered HR Training Simulator with Emotion Detection</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -26,10 +26,14 @@
     .history-card{border-left:6px solid #3498db;cursor:pointer;margin-bottom:6px;}
     .selected-history{border-left:6px solid #e67e22;background-color:#fdf2e9;}
     .button-status-container{text-align:center;margin-top:8px;}
+    .emotion-indicator{display:inline-block;padding:4px 8px;border-radius:4px;font-size:14px;margin-left:8px;}
+    .emotion-positive{background:#d4edda;color:#155724;}
+    .emotion-warning{background:#fff3cd;color:#856404;}
+    .emotion-negative{background:#f8d7da;color:#721c24;}
   </style>
 </head>
 <body>
-  <h2>AI-Powered HR Training Simulator</h2>
+  <h2>AI-Powered HR Training Simulator with Emotion Detection</h2>
   <div class="container">
     <!-- Left Panel -->
     <div class="left-panel">
@@ -61,6 +65,12 @@
         <div id="currentQuestion" class="card">[Click role to fetch first question]</div>
       </label>
 
+      <label>Live Feedback:
+        <div id="liveEmotionFeedback" class="card" style="background-color: #f0f8ff; min-height: 50px;">
+          <span id="emotionStatus">Ready to detect emotions...</span>
+        </div>
+      </label>
+
       <div class="meta-row">
         <div>
           <label>Time per answer (minutes)</label>
@@ -86,6 +96,13 @@
         <canvas id="scoreChart"></canvas>
         <div id="feedbackText" class="feedback"></div>
       </div>
+      
+      <h3>Emotional Analysis:</h3>
+      <div id="emotionBox" class="card">
+        <canvas id="emotionChart"></canvas>
+        <div id="emotionFeedback" class="feedback"></div>
+      </div>
+      
       <h3>Transcript:</h3>
       <div id="transcriptBox" class="card">[Transcript will appear here]</div>
       
@@ -110,10 +127,101 @@ const timePerAnswer=document.getElementById('timePerAnswer');
 const timerDisplay=document.getElementById('timerDisplay');
 const historyContainer=document.getElementById('history');
 const sortBtn=document.getElementById('sortBtn');
+const liveEmotionFeedback=document.getElementById('liveEmotionFeedback');
+const emotionStatus=document.getElementById('emotionStatus');
 
 let mediaStream=null,recorder=null,chunks=[],countdownInterval=null,remainingSeconds=0,scoreChart=null;
 let lastQuestion=null,lastTranscript=null;
 let historySortOrder="newest";
+let emotionChart=null;
+let faceDetectionInterval=null;
+
+// --- Live Face Detection (client-side) ---
+async function startLiveFaceDetection() {
+  if (!mediaStream) return;
+  
+  const video = document.createElement('video');
+  video.srcObject = mediaStream;
+  video.play();
+  
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  
+  faceDetectionInterval = setInterval(() => {
+    if (video.readyState === 4) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      
+      // Simple face position check
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const centerBrightness = calculateCenterBrightness(imageData);
+      const edgeBrightness = calculateEdgeBrightness(imageData);
+      
+      if (centerBrightness < 30) {
+        emotionStatus.innerHTML = '⚠️ Please ensure your face is visible and well-lit';
+        emotionStatus.className = 'emotion-negative';
+      } else if (Math.abs(centerBrightness - edgeBrightness) > 50) {
+        emotionStatus.innerHTML = '📷 Look straight at the camera for better engagement';
+        emotionStatus.className = 'emotion-warning';
+      } else {
+        emotionStatus.innerHTML = '✅ Good positioning - maintain eye contact';
+        emotionStatus.className = 'emotion-positive';
+      }
+    }
+  }, 2000); // Check every 2 seconds
+}
+
+function calculateCenterBrightness(imageData) {
+  const data = imageData.data;
+  const centerX = Math.floor(imageData.width / 2);
+  const centerY = Math.floor(imageData.height / 2);
+  const sampleSize = 50;
+  let totalBrightness = 0;
+  let samples = 0;
+  
+  for (let x = centerX - sampleSize; x < centerX + sampleSize; x++) {
+    for (let y = centerY - sampleSize; y < centerY + sampleSize; y++) {
+      if (x >= 0 && x < imageData.width && y >= 0 && y < imageData.height) {
+        const idx = (y * imageData.width + x) * 4;
+        const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+        totalBrightness += brightness;
+        samples++;
+      }
+    }
+  }
+  
+  return samples > 0 ? totalBrightness / samples : 0;
+}
+
+function calculateEdgeBrightness(imageData) {
+  const data = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  let totalBrightness = 0;
+  let samples = 0;
+  const edgeSize = 20;
+  
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < edgeSize; y++) {
+      const idx = (y * width + x) * 4;
+      const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+      totalBrightness += brightness;
+      samples++;
+    }
+  }
+  
+  return samples > 0 ? totalBrightness / samples : 0;
+}
+
+function stopLiveFaceDetection() {
+  if (faceDetectionInterval) {
+    clearInterval(faceDetectionInterval);
+    faceDetectionInterval = null;
+    emotionStatus.innerHTML = 'Ready to detect emotions...';
+    emotionStatus.className = '';
+  }
+}
 
 // --- Dynamic Question Fetch ---
 async function fetchNextQuestion(lastAnswer=null){
@@ -152,6 +260,60 @@ function renderScores(score){
   scoreChart=new Chart(ctx,{type:"bar",data:{labels,datasets:[{label:"Score (0-100)",data:values,backgroundColor:["#3498db","#2ecc71","#f39c12","#9b59b6"]}]},options:{scales:{y:{beginAtZero:true,max:100}}}});
 
   document.getElementById("feedbackText").innerHTML=`<strong>Feedback:</strong> ${score.feedback??"-"}`;
+}
+
+// Render Emotion Analysis
+function renderEmotions(emotionData) {
+  if (!emotionData || !emotionData.emotion_distribution) {
+    document.getElementById("emotionFeedback").textContent = "[No emotion data]";
+    return;
+  }
+  
+  const labels = Object.keys(emotionData.emotion_distribution);
+  const values = Object.values(emotionData.emotion_distribution);
+  const colors = {
+    'happy': '#2ecc71',
+    'sad': '#3498db',
+    'angry': '#e74c3c',
+    'fear': '#9b59b6',
+    'disgust': '#95a5a6',
+    'surprise': '#f39c12',
+    'neutral': '#34495e'
+  };
+  
+  const backgroundColors = labels.map(label => colors[label] || '#95a5a6');
+  
+  if (emotionChart) emotionChart.destroy();
+  
+  const ctx = document.getElementById("emotionChart").getContext("2d");
+  emotionChart = new Chart(ctx, {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: backgroundColors
+      }]
+    },
+    options: {
+      plugins: {
+        legend: { position: 'right' },
+        title: {
+          display: true,
+          text: `Dominant Emotion: ${emotionData.dominant_emotion || 'neutral'}`
+        }
+      }
+    }
+  });
+  
+  // Display feedback messages
+  const feedbackHtml = emotionData.feedback_messages 
+    ? emotionData.feedback_messages.map(msg => `<li>${msg}</li>`).join('')
+    : '';
+  
+  document.getElementById("emotionFeedback").innerHTML = feedbackHtml 
+    ? `<strong>Emotion Feedback:</strong><ul style="margin:5px 0;padding-left:20px;">${feedbackHtml}</ul>`
+    : '<strong>Emotion Feedback:</strong> Good emotional control throughout';
 }
 
 // --- Load History with clickable links ---
@@ -200,7 +362,18 @@ async function loadHistory() {
         attemptDiv.style.borderTop = "1px solid #eee";
         attemptDiv.style.paddingTop = "4px";
         attemptDiv.style.marginTop = "4px";
-        attemptDiv.innerHTML = `<strong>${new Date(item.timestamp).toLocaleTimeString()}</strong>
+        
+        // Add emotion indicator
+        let emotionIndicator = '';
+        if (item.emotion_data && item.emotion_data.dominant_emotion) {
+          const emotion = item.emotion_data.dominant_emotion;
+          const emotionClass = ['happy', 'neutral'].includes(emotion) ? 'emotion-positive' : 
+                               ['sad', 'fear', 'disgust'].includes(emotion) ? 'emotion-negative' : 
+                               'emotion-warning';
+          emotionIndicator = `<span class="emotion-indicator ${emotionClass}">Emotion: ${emotion}</span>`;
+        }
+        
+        attemptDiv.innerHTML = `<strong>${new Date(item.timestamp).toLocaleTimeString()}</strong> ${emotionIndicator}
           <br><em>Q:</em> ${item.last_question || "-"}<br>
           <em>A:</em> ${item.transcript || "-"}`;
 
@@ -213,7 +386,10 @@ async function loadHistory() {
         link.addEventListener("click", () => {
           lastTranscript = item.transcript;
           transcriptBox.textContent = item.transcript;
-          renderScores(item.score); // Use the saved score
+          renderScores(item.score);
+          if (item.emotion_data) {
+            renderEmotions(item.emotion_data);
+          }
         });
 
         attemptDiv.appendChild(link);
@@ -246,16 +422,27 @@ startBtn.addEventListener("click",async()=>{
   chunks=[];recorder=new MediaRecorder(mediaStream,{mimeType:"video/webm;codecs=vp8,opus"});
   recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);}
   recorder.onstop=onStop;
-  recorder.start();startBtn.disabled=true;stopBtn.disabled=false;status.textContent="Recording...";
+  recorder.start();
+  startBtn.disabled=true;stopBtn.disabled=false;status.textContent="Recording...";
+  startLiveFaceDetection(); // Start live emotion detection
   remainingSeconds=(parseInt(timePerAnswer.value)||2)*60;
   updateTimerDisplay(remainingSeconds);
   clearInterval(countdownInterval);
   countdownInterval=setInterval(()=>{remainingSeconds--;updateTimerDisplay(remainingSeconds);
-    if(remainingSeconds<=0){recorder.stop();clearInterval(countdownInterval);status.textContent="Time up — uploading...";}
+    if(remainingSeconds<=0){recorder.stop();clearInterval(countdownInterval);status.textContent="Time up — uploading...";stopLiveFaceDetection();}
   },1000);
 });
 
-stopBtn.addEventListener("click",()=>{if(recorder&&recorder.state!=="inactive"){recorder.stop();startBtn.disabled=false;stopBtn.disabled=true;status.textContent="Stopping...";clearInterval(countdownInterval);}});
+stopBtn.addEventListener("click",()=>{
+  if(recorder&&recorder.state!=="inactive"){
+    recorder.stop();
+    startBtn.disabled=false;
+    stopBtn.disabled=true;
+    status.textContent="Stopping...";
+    clearInterval(countdownInterval);
+    stopLiveFaceDetection(); // Stop live detection
+  }
+});
 
 async function onStop(){
   clearInterval(countdownInterval);updateTimerDisplay(0);
@@ -265,13 +452,16 @@ async function onStop(){
   form.append("candidate",candidate.value||"unknown");
   form.append("role",roleSelect.value||"General");
   form.append("last_question",lastQuestion||"");
-  status.textContent="Uploading...";
+  status.textContent="Uploading and analyzing emotions...";
   try{
     const res=await fetch("/upload-audio",{method:"POST",body:form});
     const data=await res.json();
     status.textContent="Uploaded successfully!";
     transcriptBox.textContent=data.transcript||"[No transcript]";
     renderScores(data.score);
+    if (data.emotions) {
+      renderEmotions(data.emotions);
+    }
     lastTranscript=data.transcript;
     loadHistory();
     fetchNextQuestion(lastTranscript);
