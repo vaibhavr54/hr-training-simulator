@@ -2,174 +2,494 @@
 <html>
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI-Powered HR Training Simulator with Emotion Detection</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family:'Roboto',sans-serif; background:#f4f7f9; margin:20px; color:#333; }
-    h2,h3 { color:#2c3e50; } h2{margin-bottom:40px;font-size:35px;}
-    .container{display:flex;gap:40px;flex-wrap:wrap;}
-    .left-panel,.right-panel{flex:1;min-width:320px;}
-    #preview{width:100%;border-radius:8px;border:1px solid #ccc;margin-bottom:8px;background:#000;}
-    button{padding:10px 16px;font-size:16px;margin:4px;border:none;border-radius:5px;cursor:pointer;transition:all .2s;}
-    #startBtn{background:#4CAF50;color:#fff;}#startBtn:hover{background:#45a049;}
-    #stopBtn{background:#f44336;color:#fff;}#stopBtn:hover{background:#e53935;}
-    #sortBtn{width:150px;}
-    .status{font-weight:bold;margin-top:6px;color:#27ae60;}
-    .card{background:#fff;padding:12px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.1);margin-bottom:12px;max-width:100%;word-wrap:break-word;}
-    label{display:block;margin-bottom:8px;font-weight:500;}
-    input,select{padding:6px 8px;font-size:16px;border-radius:4px;border:1px solid #ccc;width:100%;box-sizing:border-box;margin-bottom:12px;}
-    .meta-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
-    .meta-row>*{flex:1;}#timerDisplay{font-size:18px;font-weight:700;color:#c0392b;}
-    .feedback{font-style:italic;color:#555;margin-top:6px;}
-    .right-panel{max-height:150vh;overflow-y:auto;}
-    .history-card{border-left:8px solid #3498db;cursor:pointer;margin-bottom:6px;}
-    .selected-history{border-left:6px solid #e67e22;background-color:#fdf2e9;}
-    .button-status-container{text-align:center;margin-top:8px;}
-    .emotion-indicator{display:inline-block;padding:4px 8px;border-radius:4px;font-size:14px;margin-left:8px;}
-    .emotion-positive{background:#d4edda;color:#155724;}
-    .emotion-warning{background:#fff3cd;color:#856404;}
-    .emotion-negative{background:#f8d7da;color:#721c24;}
+    * { box-sizing: border-box; }
+    body { 
+      font-family: 'Roboto', sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      margin: 0;
+      padding: 20px; 
+      color: #333; 
+      min-height: 100vh;
+    }
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: #f4f7f9;
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h2 { 
+      color: #2c3e50; 
+      margin-bottom: 30px;
+      font-size: 32px;
+      text-align: center;
+      font-weight: 700;
+    }
+    h3 { 
+      color: #2c3e50;
+      font-size: 20px;
+      margin-top: 20px;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .container { 
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+    }
+    .left-panel, .right-panel { 
+      flex: 1;
+      min-width: 320px;
+    }
+    
+    /* Video Preview */
+    #preview { 
+      width: 100%;
+      max-height: 400px;
+      border-radius: 12px;
+      border: 3px solid #ddd;
+      margin-bottom: 12px;
+      background: #000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* Buttons */
+    button {
+      padding: 12px 20px;
+      font-size: 16px;
+      margin: 6px 4px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    button:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    #startBtn { background: #4CAF50; color: #fff; }
+    #startBtn:hover:not(:disabled) { background: #45a049; }
+    
+    #stopBtn { background: #f44336; color: #fff; }
+    #stopBtn:hover:not(:disabled) { background: #e53935; }
+    
+    #sortBtn { 
+      width: 150px;
+      background: #3498db;
+      color: white;
+      font-size: 14px;
+      padding: 8px 12px;
+    }
+    #sortBtn:hover { background: #2980b9; }
+    
+    /* Status */
+    .status {
+      font-weight: bold;
+      margin-top: 10px;
+      color: #27ae60;
+      text-align: center;
+      min-height: 24px;
+      font-size: 15px;
+    }
+    .status.error { color: #e74c3c; }
+    .status.processing { color: #f39c12; }
+    
+    /* Cards */
+    .card {
+      background: #fff;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+      word-wrap: break-word;
+    }
+    
+    /* Form Elements */
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #2c3e50;
+      font-size: 15px;
+    }
+    input, select {
+      padding: 10px 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 2px solid #ddd;
+      width: 100%;
+      margin-bottom: 16px;
+      transition: border-color 0.3s;
+      font-family: 'Roboto', sans-serif;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    
+    /* Meta Row */
+    .meta-row {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .meta-row > * { flex: 1; min-width: 120px; }
+    
+    #timerDisplay {
+      font-size: 28px;
+      font-weight: 700;
+      color: #c0392b;
+      text-align: center;
+      padding: 10px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    }
+    
+    /* Feedback */
+    .feedback {
+      font-style: italic;
+      color: #555;
+      margin-top: 10px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+    
+    /* Right Panel */
+    .right-panel {
+      max-height: 85vh;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+    .right-panel::-webkit-scrollbar { width: 8px; }
+    .right-panel::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
+    .right-panel::-webkit-scrollbar-thumb { background: #888; border-radius: 10px; }
+    .right-panel::-webkit-scrollbar-thumb:hover { background: #555; }
+    
+    /* History Cards */
+    .history-card {
+      border-left: 6px solid #3498db;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: all 0.3s;
+    }
+    .history-card:hover {
+      transform: translateX(5px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+    .selected-history {
+      border-left: 6px solid #e67e22;
+      background-color: #fdf2e9;
+    }
+    
+    /* Button Container */
+    .button-status-container {
+      text-align: center;
+      margin-top: 12px;
+    }
+    
+    /* Emotion Indicators */
+    .emotion-indicator {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      margin-left: 8px;
+      font-weight: 600;
+    }
+    .emotion-positive { background: #d4edda; color: #155724; }
+    .emotion-warning { background: #fff3cd; color: #856404; }
+    .emotion-negative { background: #f8d7da; color: #721c24; }
+    
+    /* Loading Spinner */
+    .spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    /* Live Feedback Styles */
+    #liveEmotionFeedback {
+      background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+      border: 2px solid #667eea;
+      min-height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    #emotionStatus {
+      font-size: 15px;
+      font-weight: 500;
+    }
+    
+    /* Session Groups */
+    .session-header {
+      display: flex;
+      justify-content: space-between;
+      cursor: pointer;
+      font-weight: 600;
+      margin-bottom: 8px;
+      padding: 10px;
+      background: #ecf0f1;
+      border-radius: 6px;
+      transition: background 0.3s;
+    }
+    .session-header:hover {
+      background: #d5dbdb;
+    }
+    
+    .session-content {
+      display: none;
+      padding-left: 12px;
+    }
+    
+    .attempt-item {
+      border-top: 1px solid #eee;
+      padding-top: 8px;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    
+    .view-link {
+      font-size: 13px;
+      color: #2980b9;
+      cursor: pointer;
+      text-decoration: underline;
+      margin-top: 6px;
+      display: inline-block;
+    }
+    .view-link:hover {
+      color: #3498db;
+    }
+    
+    /* Chart Containers */
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin-bottom: 16px;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .main-container { padding: 15px; }
+      h2 { font-size: 24px; }
+      .container { flex-direction: column; }
+      .meta-row { flex-direction: column; }
+      .meta-row > * { width: 100%; }
+    }
+    
+    /* Error Messages */
+    .error-message {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 4px solid #f44336;
+    }
+    
+    /* Success Messages */
+    .success-message {
+      background: #d4edda;
+      color: #155724;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 10px 0;
+      border-left: 4px solid #4CAF50;
+    }
   </style>
 </head>
 <body>
-  <h2>AI-Powered HR Training Simulator with Emotion Detection</h2>
-  <div class="container">
-    <!-- Left Panel -->
-    <div class="left-panel">
-      <label>Candidate Name:
-        <input id="candidate" placeholder="Enter your name"/>
-      </label>
-      <label>Role:
-        <select id="roleSelect">
-          <option value="Select Role">Select Role</option>
-          <option value="General">General HR Interview</option>
-          <option value="Software Engineer">Software Engineer</option>
-          <option value="Data Scientist">Data Scientist</option>
-          <option value="Product Manager">Product Manager</option>
-          <option value="Marketing Manager">Marketing Manager</option>
-          <option value="Sales Executive">Sales Executive</option>
-          <option value="UX Designer">UX Designer</option>
-          <option value="QA Engineer">QA Engineer</option>
-          <option value="Business Analyst">Business Analyst</option>
-          <option value="HR Specialist">HR Specialist</option>
-          <option value="Operations Manager">Operations Manager</option>
-          <option value="Finance Analyst">Finance Analyst</option>
-          <option value="Content Writer">Content Writer</option>
-          <option value="Data Engineer">Data Engineer</option>
-          <option value="Project Manager">Project Manager</option>
-        </select>
-      </label>
+  <div class="main-container">
+    <h2>🎯 AI-Powered HR Training Simulator</h2>
+    
+    <div class="container">
+      <!-- Left Panel -->
+      <div class="left-panel">
+        <label>👤 Candidate Name:
+          <input id="candidate" placeholder="Enter your name" autocomplete="name"/>
+        </label>
+        
+        <label>💼 Role:
+          <select id="roleSelect">
+            <option value="General">General HR Interview</option>
+            <option value="Software Engineer">Software Engineer</option>
+            <option value="Data Scientist">Data Scientist</option>
+            <option value="Product Manager">Product Manager</option>
+            <option value="Marketing Manager">Marketing Manager</option>
+            <option value="Sales Executive">Sales Executive</option>
+            <option value="UX Designer">UX Designer</option>
+            <option value="QA Engineer">QA Engineer</option>
+            <option value="Business Analyst">Business Analyst</option>
+            <option value="HR Specialist">HR Specialist</option>
+            <option value="Operations Manager">Operations Manager</option>
+            <option value="Finance Analyst">Finance Analyst</option>
+            <option value="Content Writer">Content Writer</option>
+            <option value="Data Engineer">Data Engineer</option>
+            <option value="Project Manager">Project Manager</option>
+          </select>
+        </label>
 
-      <label>Current Question:
-        <div id="currentQuestion" class="card">[Click role to fetch first question]</div>
-      </label>
+        <label>❓ Current Question:
+          <div id="currentQuestion" class="card">Select a role to fetch your first question</div>
+        </label>
 
-      <label>Live Feedback:
-        <div id="liveEmotionFeedback" class="card" style="background-color: #f0f8ff; min-height: 50px;">
-          <span id="emotionStatus">Ready to detect emotions...</span>
+        <label>😊 Live Feedback:
+          <div id="liveEmotionFeedback" class="card">
+            <span id="emotionStatus">Ready to detect emotions...</span>
+          </div>
+        </label>
+
+        <div class="meta-row">
+          <div>
+            <label>⏱️ Time per answer (minutes)</label>
+            <input id="timePerAnswer" type="number" min="1" max="10" value="2"/>
+          </div>
+          <div style="min-width:140px;">
+            <label>⏰ Timer</label>
+            <div id="timerDisplay">00:00</div>
+          </div>
         </div>
-      </label>
 
-      <div class="meta-row">
-        <div>
-          <label>Time per answer (minutes)</label>
-          <input id="timePerAnswer" type="number" min="1" value="2"/>
-        </div>
-        <div style="min-width:110px;text-align:center;">
-          <label>Timer</label><div id="timerDisplay">00:00</div>
+        <video id="preview" autoplay playsinline muted></video>
+        
+        <div class="button-status-container">
+          <button id="startBtn">🎥 Start Recording</button>
+          <button id="stopBtn" disabled>⏹️ Stop & Upload</button>
+          <div id="status" class="status"></div>
         </div>
       </div>
 
-      <video id="preview" autoplay playsinline muted></video>
-      <div class="button-status-container">
-        <button id="startBtn">Start Recording</button>
-        <button id="stopBtn" disabled>Stop & Upload</button>
-        <div id="status" class="status"></div>
+      <!-- Right Panel -->
+      <div class="right-panel">
+        <h3>📊 Feedback & Scores:</h3>
+        <div id="scoreBox" class="card">
+          <div class="chart-container">
+            <canvas id="scoreChart"></canvas>
+          </div>
+          <div id="feedbackText" class="feedback">Complete an interview to see your scores</div>
+        </div>
+        
+        <h3>😃 Emotional Analysis:</h3>
+        <div id="emotionBox" class="card">
+          <div class="chart-container" style="height: 250px;">
+            <canvas id="emotionChart"></canvas>
+          </div>
+          <div id="emotionFeedback" class="feedback">Emotion analysis will appear here</div>
+        </div>
+        
+        <h3>📝 Transcript:</h3>
+        <div id="transcriptBox" class="card">Your answer transcript will appear here after recording</div>
+        
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+          <h3 style="margin:0;">📚 Past Attempts:</h3>
+          <button id="sortBtn">⬇️ Newest first</button>
+        </div>
+        <div id="history"></div>
       </div>
-    </div>
-
-    <!-- Right Panel -->
-    <div class="right-panel">
-      <h3>Feedback & Scores:</h3>
-      <div id="scoreBox" class="card">
-        <canvas id="scoreChart"></canvas>
-        <div id="feedbackText" class="feedback"></div>
-      </div>
-      
-      <h3>Emotional Analysis:</h3>
-      <div id="emotionBox" class="card">
-        <canvas id="emotionChart"></canvas>
-        <div id="emotionFeedback" class="feedback"></div>
-      </div>
-      
-      <h3>Transcript:</h3>
-      <div id="transcriptBox" class="card">[Transcript will appear here]</div>
-      
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-        <h3 style="margin:0;">Past Attempts:</h3>
-        <button id="sortBtn">Newest first</button>
-      </div>
-      <div id="history"></div>
     </div>
   </div>
 
 <script>
-const preview=document.getElementById('preview');
-const startBtn=document.getElementById('startBtn');
-const stopBtn=document.getElementById('stopBtn');
-const status=document.getElementById('status');
-const candidate=document.getElementById('candidate');
-const transcriptBox=document.getElementById('transcriptBox');
-const roleSelect=document.getElementById('roleSelect');
-const currentQuestionDiv=document.getElementById('currentQuestion');
-const timePerAnswer=document.getElementById('timePerAnswer');
-const timerDisplay=document.getElementById('timerDisplay');
-const historyContainer=document.getElementById('history');
-const sortBtn=document.getElementById('sortBtn');
-const liveEmotionFeedback=document.getElementById('liveEmotionFeedback');
-const emotionStatus=document.getElementById('emotionStatus');
+// DOM Elements
+const preview = document.getElementById('preview');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+const status = document.getElementById('status');
+const candidate = document.getElementById('candidate');
+const transcriptBox = document.getElementById('transcriptBox');
+const roleSelect = document.getElementById('roleSelect');
+const currentQuestionDiv = document.getElementById('currentQuestion');
+const timePerAnswer = document.getElementById('timePerAnswer');
+const timerDisplay = document.getElementById('timerDisplay');
+const historyContainer = document.getElementById('history');
+const sortBtn = document.getElementById('sortBtn');
+const liveEmotionFeedback = document.getElementById('liveEmotionFeedback');
+const emotionStatus = document.getElementById('emotionStatus');
 
-let mediaStream=null,recorder=null,chunks=[],countdownInterval=null,remainingSeconds=0,scoreChart=null;
-let lastQuestion=null,lastTranscript=null;
-let historySortOrder="newest";
-let emotionChart=null;
-let faceDetectionInterval=null;
+// State variables
+let mediaStream = null;
+let recorder = null;
+let chunks = [];
+let countdownInterval = null;
+let remainingSeconds = 0;
+let scoreChart = null;
+let emotionChart = null;
+let lastQuestion = null;
+let lastTranscript = null;
+let historySortOrder = "newest";
+let faceDetectionInterval = null;
+let isRecording = false;
 
-// --- Live Face Detection (client-side) ---
+// ========== LIVE FACE DETECTION ==========
 async function startLiveFaceDetection() {
   if (!mediaStream) return;
   
   const video = document.createElement('video');
   video.srcObject = mediaStream;
-  video.play();
+  await video.play();
   
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
+  
+  let checkCount = 0;
   
   faceDetectionInterval = setInterval(() => {
     if (video.readyState === 4) {
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+      
+      if (canvas.width === 0 || canvas.height === 0) return;
+      
       ctx.drawImage(video, 0, 0);
       
-      // Simple face position check
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const centerBrightness = calculateCenterBrightness(imageData);
-      const edgeBrightness = calculateEdgeBrightness(imageData);
-      
-      if (centerBrightness < 30) {
-        emotionStatus.innerHTML = '⚠️ Please ensure your face is visible and well-lit';
-        emotionStatus.className = 'emotion-negative';
-      } else if (Math.abs(centerBrightness - edgeBrightness) > 50) {
-        emotionStatus.innerHTML = '📷 Look straight at the camera for better engagement';
-        emotionStatus.className = 'emotion-warning';
-      } else {
-        emotionStatus.innerHTML = '✅ Good positioning - maintain eye contact';
-        emotionStatus.className = 'emotion-positive';
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const centerBrightness = calculateCenterBrightness(imageData);
+        const edgeBrightness = calculateEdgeBrightness(imageData);
+        
+        checkCount++;
+        
+        if (centerBrightness < 30) {
+          emotionStatus.innerHTML = '⚠️ Low lighting detected - please improve lighting';
+          emotionStatus.className = 'emotion-negative';
+        } else if (centerBrightness < 60) {
+          emotionStatus.innerHTML = '💡 Lighting could be better';
+          emotionStatus.className = 'emotion-warning';
+        } else if (Math.abs(centerBrightness - edgeBrightness) > 60) {
+          emotionStatus.innerHTML = '📷 Center yourself in the frame';
+          emotionStatus.className = 'emotion-warning';
+        } else {
+          emotionStatus.innerHTML = '✅ Perfect positioning - maintain eye contact';
+          emotionStatus.className = 'emotion-positive';
+        }
+      } catch (e) {
+        console.error('Face detection error:', e);
       }
     }
-  }, 2000); // Check every 2 seconds
+  }, 2000);
 }
 
 function calculateCenterBrightness(imageData) {
@@ -180,14 +500,12 @@ function calculateCenterBrightness(imageData) {
   let totalBrightness = 0;
   let samples = 0;
   
-  for (let x = centerX - sampleSize; x < centerX + sampleSize; x++) {
-    for (let y = centerY - sampleSize; y < centerY + sampleSize; y++) {
-      if (x >= 0 && x < imageData.width && y >= 0 && y < imageData.height) {
-        const idx = (y * imageData.width + x) * 4;
-        const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
-        totalBrightness += brightness;
-        samples++;
-      }
+  for (let x = Math.max(0, centerX - sampleSize); x < Math.min(imageData.width, centerX + sampleSize); x++) {
+    for (let y = Math.max(0, centerY - sampleSize); y < Math.min(imageData.height, centerY + sampleSize); y++) {
+      const idx = (y * imageData.width + x) * 4;
+      const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3;
+      totalBrightness += brightness;
+      samples++;
     }
   }
   
@@ -223,54 +541,168 @@ function stopLiveFaceDetection() {
   }
 }
 
-// --- Dynamic Question Fetch ---
-async function fetchNextQuestion(lastAnswer=null){
-  const form=new FormData();
-  form.append("candidate",candidate.value||"unknown");
-  form.append("role",roleSelect.value||"General");
-  if(lastAnswer) form.append("last_answer",lastAnswer);
-  try{
-    const res=await fetch("/next-question",{method:"POST",body:form});
-    const data=await res.json();
-    lastQuestion=data.question;
-    currentQuestionDiv.textContent=lastQuestion;
-  }catch(err){ currentQuestionDiv.textContent="[Error fetching question]"; }
+// ========== DYNAMIC QUESTION FETCH ==========
+async function fetchNextQuestion(lastAnswer = null) {
+  const form = new FormData();
+  form.append("candidate", candidate.value || "unknown");
+  form.append("role", roleSelect.value || "General");
+  if (lastAnswer) form.append("last_answer", lastAnswer);
+  
+  currentQuestionDiv.innerHTML = '<div class="spinner"></div>';
+  
+  try {
+    const res = await fetch("/next-question", {
+      method: "POST",
+      body: form
+    });
+    
+    if (!res.ok) throw new Error('Failed to fetch question');
+    
+    const data = await res.json();
+    lastQuestion = data.question;
+    currentQuestionDiv.textContent = lastQuestion;
+  } catch (err) {
+    console.error('Question fetch error:', err);
+    currentQuestionDiv.textContent = "[Error fetching question. Please try again.]";
+    currentQuestionDiv.className = 'card error-message';
+    setTimeout(() => {
+      currentQuestionDiv.className = 'card';
+    }, 3000);
+  }
 }
 
-// --- Init Media ---
-async function initMedia(){
-  try{
-    mediaStream=await navigator.mediaDevices.getUserMedia({video:true,audio:{echoCancellation:true,noiseSuppression:true}});
-    preview.srcObject=mediaStream;
-    status.textContent='Camera & mic ready';
-  }catch(err){ alert("Cannot access camera/mic: "+err.message);}
+// ========== MEDIA INITIALIZATION ==========
+async function initMedia() {
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: 'user'
+      },
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+    
+    preview.srcObject = mediaStream;
+    status.textContent = '✅ Camera & microphone ready';
+    status.className = 'status';
+  } catch (err) {
+    console.error('Media access error:', err);
+    status.textContent = '❌ Cannot access camera/mic: ' + err.message;
+    status.className = 'status error';
+    alert("Please allow camera and microphone access to use this application.");
+  }
 }
 
-// Timer
-function updateTimerDisplay(sec){const mm=String(Math.floor(sec/60)).padStart(2,"0");const ss=String(sec%60).padStart(2,"0");timerDisplay.textContent=`${mm}:${ss}`;}
-
-// Render Scores
-function renderScores(score){
-  if(!score){document.getElementById("feedbackText").textContent="[No scores]";return;}
-  if(typeof score==="string"){try{score=JSON.parse(score);}catch(e){}}
-  const labels=["Communication","Confidence","Structure","Soft Skills"];
-  const values=[score.communication??0,score.confidence??0,score.structure??0,score.soft_skills??0];
-  if(scoreChart)scoreChart.destroy();
-  const ctx=document.getElementById("scoreChart").getContext("2d");
-  scoreChart=new Chart(ctx,{type:"bar",data:{labels,datasets:[{label:"Score (0-100)",data:values,backgroundColor:["#3498db","#2ecc71","#f39c12","#9b59b6"]}]},options:{scales:{y:{beginAtZero:true,max:100}}}});
-
-  document.getElementById("feedbackText").innerHTML=`<strong>Feedback:</strong> ${score.feedback??"-"}`;
+// ========== TIMER ==========
+function updateTimerDisplay(sec) {
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+  const ss = String(sec % 60).padStart(2, "0");
+  timerDisplay.textContent = `${mm}:${ss}`;
+  
+  if (sec <= 30 && sec > 0) {
+    timerDisplay.style.color = '#e67e22';
+  } else if (sec <= 10) {
+    timerDisplay.style.color = '#c0392b';
+  } else {
+    timerDisplay.style.color = '#27ae60';
+  }
 }
 
-// Render Emotion Analysis
+// ========== RENDER SCORES ==========
+function renderScores(score) {
+  if (!score) {
+    document.getElementById("feedbackText").innerHTML = '<em>No scores available</em>';
+    return;
+  }
+  
+  if (typeof score === "string") {
+    try {
+      score = JSON.parse(score);
+    } catch (e) {
+      console.error('Score parsing error:', e);
+      return;
+    }
+  }
+  
+  const labels = ["Communication", "Confidence", "Structure", "Soft Skills"];
+  const values = [
+    score.communication ?? 0,
+    score.confidence ?? 0,
+    score.structure ?? 0,
+    score.soft_skills ?? 0
+  ];
+  
+  if (scoreChart) scoreChart.destroy();
+  
+  const ctx = document.getElementById("scoreChart").getContext("2d");
+  scoreChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Score (0-100)",
+        data: values,
+        backgroundColor: [
+          "#3498db",
+          "#2ecc71",
+          "#f39c12",
+          "#9b59b6"
+        ],
+        borderWidth: 2,
+        borderColor: "#fff"
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            font: { size: 12 }
+          }
+        },
+        x: {
+          ticks: {
+            font: { size: 12 }
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          padding: 12,
+          titleFont: { size: 14 },
+          bodyFont: { size: 13 }
+        }
+      }
+    }
+  });
+
+  document.getElementById("feedbackText").innerHTML = 
+    `<strong>💬 Feedback:</strong><br>${score.feedback ?? "No feedback available"}`;
+}
+
+// ========== RENDER EMOTIONS ==========
 function renderEmotions(emotionData) {
   if (!emotionData || !emotionData.emotion_distribution) {
-    document.getElementById("emotionFeedback").textContent = "[No emotion data]";
+    document.getElementById("emotionFeedback").innerHTML = 
+      '<em>No emotion data available for this recording</em>';
     return;
   }
   
   const labels = Object.keys(emotionData.emotion_distribution);
   const values = Object.values(emotionData.emotion_distribution);
+  
   const colors = {
     'happy': '#2ecc71',
     'sad': '#3498db',
@@ -289,50 +721,90 @@ function renderEmotions(emotionData) {
   emotionChart = new Chart(ctx, {
     type: "doughnut",
     data: {
-      labels,
+      labels: labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
       datasets: [{
         data: values,
-        backgroundColor: backgroundColors
+        backgroundColor: backgroundColors,
+        borderWidth: 2,
+        borderColor: '#fff'
       }]
     },
     options: {
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: {
-        legend: { position: 'right' },
+        legend: {
+          position: 'right',
+          labels: {
+            font: { size: 12 },
+            padding: 10
+          }
+        },
         title: {
           display: true,
-          text: `Dominant Emotion: ${emotionData.dominant_emotion || 'neutral'}`
+          text: `Dominant: ${(emotionData.dominant_emotion || 'neutral').toUpperCase()}`,
+          font: { size: 16, weight: 'bold' },
+          color: '#2c3e50'
+        },
+        tooltip: {
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          padding: 12
         }
       }
     }
   });
   
   // Display feedback messages
-  const feedbackHtml = emotionData.feedback_messages 
-    ? emotionData.feedback_messages.map(msg => `<li>${msg}</li>`).join('')
-    : '';
+  let feedbackHtml = '';
   
-  document.getElementById("emotionFeedback").innerHTML = feedbackHtml 
-    ? `<strong>Emotion Feedback:</strong><ul style="margin:5px 0;padding-left:20px;">${feedbackHtml}</ul>`
-    : '<strong>Emotion Feedback:</strong> Good emotional control throughout';
+  if (emotionData.feedback_messages && emotionData.feedback_messages.length > 0) {
+    feedbackHtml = '<strong>🎭 Emotion Insights:</strong><ul style="margin:8px 0;padding-left:20px;">';
+    emotionData.feedback_messages.forEach(msg => {
+      feedbackHtml += `<li>${msg}</li>`;
+    });
+    feedbackHtml += '</ul>';
+  } else {
+    feedbackHtml = '<strong>🎭 Emotion Insights:</strong> Excellent emotional control maintained throughout the interview!';
+  }
+  
+  if (emotionData.confidence_score !== undefined) {
+    feedbackHtml += `<br><strong>Confidence Score:</strong> ${emotionData.confidence_score}/100`;
+  }
+  
+  if (emotionData.face_visibility_score !== undefined) {
+    feedbackHtml += `<br><strong>Face Visibility:</strong> ${emotionData.face_visibility_score}/100`;
+  }
+  
+  document.getElementById("emotionFeedback").innerHTML = feedbackHtml;
 }
 
-// --- Load History with clickable links ---
+// ========== LOAD HISTORY ==========
 async function loadHistory() {
-  if (!candidate.value) return;
+  if (!candidate.value || candidate.value.trim() === '') return;
+  
   try {
-    const res = await fetch(`/history/${encodeURIComponent(candidate.value)}`);
+    const res = await fetch(`/history/${encodeURIComponent(candidate.value.trim())}`);
+    if (!res.ok) throw new Error('Failed to load history');
+    
     const data = await res.json();
     historyContainer.innerHTML = "";
 
-    const attempts = (data.history || []).sort((a, b) => {
+    if (!data.history || data.history.length === 0) {
+      historyContainer.innerHTML = '<div class="card"><em>No past attempts found. Start your first interview!</em></div>';
+      return;
+    }
+
+    const attempts = data.history.sort((a, b) => {
       return historySortOrder === "newest"
         ? new Date(b.timestamp) - new Date(a.timestamp)
         : new Date(a.timestamp) - new Date(b.timestamp);
     });
 
+    // Group by role and date
     const sessionsMap = {};
     attempts.forEach((item) => {
-      const sessionKey = `${item.role || "General"}|${new Date(item.timestamp).toDateString()}`;
+      const date = new Date(item.timestamp);
+      const sessionKey = `${item.role || "General"}|${date.toDateString()}`;
       if (!sessionsMap[sessionKey]) sessionsMap[sessionKey] = [];
       sessionsMap[sessionKey].push(item);
     });
@@ -344,52 +816,67 @@ async function loadHistory() {
       const sessionDiv = document.createElement("div");
       sessionDiv.className = "card";
       sessionDiv.style.marginBottom = "12px";
-      sessionDiv.style.padding = "8px";
+      sessionDiv.style.padding = "12px";
 
       const header = document.createElement("div");
-      header.style.display = "flex";
-      header.style.justifyContent = "space-between";
-      header.style.cursor = "pointer";
-      header.style.fontWeight = "600";
-      header.style.marginBottom = "6px";
-      header.innerHTML = `${dateStr} - ${role} <span style="font-size:14px;color:#555;">(click to toggle)</span>`;
+      header.className = "session-header";
+      header.innerHTML = `
+        <span>📅 ${dateStr} - ${role}</span>
+        <span style="font-size:13px;color:#7f8c8d;">${sessionAttempts.length} attempt(s)</span>
+      `;
 
       const sessionContent = document.createElement("div");
-      sessionContent.style.display = "none";
+      sessionContent.className = "session-content";
 
-      sessionAttempts.forEach((item) => {
+      sessionAttempts.forEach((item, index) => {
         const attemptDiv = document.createElement("div");
-        attemptDiv.style.borderTop = "1px solid #eee";
-        attemptDiv.style.paddingTop = "4px";
-        attemptDiv.style.marginTop = "4px";
+        attemptDiv.className = "attempt-item";
         
-        // Add emotion indicator
+        // Emotion indicator
         let emotionIndicator = '';
         if (item.emotion_data && item.emotion_data.dominant_emotion) {
           const emotion = item.emotion_data.dominant_emotion;
           const emotionClass = ['happy', 'neutral'].includes(emotion) ? 'emotion-positive' : 
                                ['sad', 'fear', 'disgust'].includes(emotion) ? 'emotion-negative' : 
                                'emotion-warning';
-          emotionIndicator = `<span class="emotion-indicator ${emotionClass}">Emotion: ${emotion}</span>`;
+          const emotionIcon = emotion === 'happy' ? '😊' : 
+                             emotion === 'sad' ? '😢' : 
+                             emotion === 'angry' ? '😠' : 
+                             emotion === 'fear' ? '😰' : 
+                             emotion === 'surprise' ? '😲' : 
+                             emotion === 'disgust' ? '🤢' : '😐';
+          emotionIndicator = `<span class="emotion-indicator ${emotionClass}">${emotionIcon} ${emotion}</span>`;
         }
         
-        attemptDiv.innerHTML = `<strong>${new Date(item.timestamp).toLocaleTimeString()}</strong> ${emotionIndicator}
-          <br><em>Q:</em> ${item.last_question || "-"}<br>
-          <em>A:</em> ${item.transcript || "-"}`;
+        const time = new Date(item.timestamp).toLocaleTimeString();
+        const questionPreview = (item.last_question || "No question").substring(0, 80);
+        const answerPreview = (item.transcript || "No transcript").substring(0, 100);
+        
+        attemptDiv.innerHTML = `
+          <strong>⏰ ${time}</strong> ${emotionIndicator}
+          <br><em>Q:</em> ${questionPreview}${questionPreview.length >= 80 ? '...' : ''}
+          <br><em>A:</em> ${answerPreview}${answerPreview.length >= 100 ? '...' : ''}
+        `;
 
-        // --- Add clickable link below answer ---
         const link = document.createElement("div");
-        link.style.fontSize = "14px";
-        link.style.color = "#2980b9";
-        link.style.cursor = "pointer";
-        link.textContent = "[View this attempt]";
+        link.className = "view-link";
+        link.textContent = "👁️ View full details";
         link.addEventListener("click", () => {
           lastTranscript = item.transcript;
-          transcriptBox.textContent = item.transcript;
+          transcriptBox.textContent = item.transcript || "No transcript available";
           renderScores(item.score);
           if (item.emotion_data) {
             renderEmotions(item.emotion_data);
           }
+          
+          // Scroll to top of right panel
+          document.querySelector('.right-panel').scrollTop = 0;
+          
+          // Visual feedback
+          link.textContent = "✅ Loaded!";
+          setTimeout(() => {
+            link.textContent = "👁️ View full details";
+          }, 2000);
         });
 
         attemptDiv.appendChild(link);
@@ -397,7 +884,8 @@ async function loadHistory() {
       });
 
       header.addEventListener("click", () => {
-        sessionContent.style.display = sessionContent.style.display === "none" ? "block" : "none";
+        const isHidden = sessionContent.style.display === "none" || sessionContent.style.display === "";
+        sessionContent.style.display = isHidden ? "block" : "none";
       });
 
       sessionDiv.appendChild(header);
@@ -405,74 +893,284 @@ async function loadHistory() {
       historyContainer.appendChild(sessionDiv);
     });
   } catch (err) {
-    console.error("History error", err);
+    console.error("History error:", err);
+    historyContainer.innerHTML = '<div class="card error-message">Failed to load history. Please try again.</div>';
   }
 }
 
-// Sort button
+// ========== SORT BUTTON ==========
 sortBtn.onclick = () => {
   historySortOrder = historySortOrder === "newest" ? "oldest" : "newest";
-  sortBtn.textContent = historySortOrder === "newest" ? "Newest first" : "Oldest first";
+  sortBtn.textContent = historySortOrder === "newest" ? "⬇️ Newest first" : "⬆️ Oldest first";
   loadHistory();
 };
 
-// --- Recording ---
-startBtn.addEventListener("click",async()=>{
-  if(!mediaStream)await initMedia();
-  chunks=[];recorder=new MediaRecorder(mediaStream,{mimeType:"video/webm;codecs=vp8,opus"});
-  recorder.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data);}
-  recorder.onstop=onStop;
-  recorder.start();
-  startBtn.disabled=true;stopBtn.disabled=false;status.textContent="Recording...";
-  startLiveFaceDetection(); // Start live emotion detection
-  remainingSeconds=(parseInt(timePerAnswer.value)||2)*60;
-  updateTimerDisplay(remainingSeconds);
-  clearInterval(countdownInterval);
-  countdownInterval=setInterval(()=>{remainingSeconds--;updateTimerDisplay(remainingSeconds);
-    if(remainingSeconds<=0){recorder.stop();clearInterval(countdownInterval);status.textContent="Time up — uploading...";stopLiveFaceDetection();}
-  },1000);
-});
-
-stopBtn.addEventListener("click",()=>{
-  if(recorder&&recorder.state!=="inactive"){
-    recorder.stop();
-    startBtn.disabled=false;
-    stopBtn.disabled=true;
-    status.textContent="Stopping...";
+// ========== RECORDING ==========
+startBtn.addEventListener("click", async () => {
+  if (!candidate.value || candidate.value.trim() === '') {
+    alert('Please enter your name before starting the interview.');
+    candidate.focus();
+    return;
+  }
+  
+  if (!lastQuestion || lastQuestion.includes('Error')) {
+    alert('Please wait for a question to load before recording.');
+    return;
+  }
+  
+  if (!mediaStream) await initMedia();
+  if (!mediaStream) {
+    alert('Camera/microphone not available. Please check permissions.');
+    return;
+  }
+  
+  chunks = [];
+  
+  try {
+    const options = { mimeType: "video/webm;codecs=vp8,opus" };
+    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+      options.mimeType = "video/webm";
+    }
+    
+    recorder = new MediaRecorder(mediaStream, options);
+    
+    recorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) {
+        chunks.push(e.data);
+      }
+    };
+    
+    recorder.onstop = onStop;
+    recorder.onerror = (e) => {
+      console.error('Recording error:', e);
+      status.textContent = '❌ Recording error occurred';
+      status.className = 'status error';
+      resetRecordingState();
+    };
+    
+    recorder.start(1000); // Capture data every second
+    isRecording = true;
+    
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    status.textContent = "🔴 Recording in progress...";
+    status.className = 'status';
+    
+    startLiveFaceDetection();
+    
+    remainingSeconds = (parseInt(timePerAnswer.value) || 2) * 60;
+    updateTimerDisplay(remainingSeconds);
+    
     clearInterval(countdownInterval);
-    stopLiveFaceDetection(); // Stop live detection
+    countdownInterval = setInterval(() => {
+      remainingSeconds--;
+      updateTimerDisplay(remainingSeconds);
+      
+      if (remainingSeconds <= 0) {
+        if (recorder && recorder.state !== "inactive") {
+          recorder.stop();
+        }
+        clearInterval(countdownInterval);
+        status.textContent = "⏰ Time's up — processing...";
+        status.className = 'status processing';
+        stopLiveFaceDetection();
+      }
+    }, 1000);
+    
+  } catch (err) {
+    console.error('Start recording error:', err);
+    status.textContent = '❌ Failed to start recording: ' + err.message;
+    status.className = 'status error';
+    resetRecordingState();
   }
 });
 
-async function onStop(){
-  clearInterval(countdownInterval);updateTimerDisplay(0);
-  const blob=new Blob(chunks,{type:"video/webm"});
-  const form=new FormData();
-  form.append("file",blob,"response.webm");
-  form.append("candidate",candidate.value||"unknown");
-  form.append("role",roleSelect.value||"General");
-  form.append("last_question",lastQuestion||"");
-  status.textContent="Uploading and analyzing emotions...";
-  try{
-    const res=await fetch("/upload-audio",{method:"POST",body:form});
-    const data=await res.json();
-    status.textContent="Uploaded successfully!";
-    transcriptBox.textContent=data.transcript||"[No transcript]";
+stopBtn.addEventListener("click", () => {
+  if (recorder && recorder.state !== "inactive") {
+    recorder.stop();
+    clearInterval(countdownInterval);
+    stopLiveFaceDetection();
+    status.textContent = "⏸️ Stopping...";
+    status.className = 'status processing';
+  }
+});
+
+async function onStop() {
+  isRecording = false;
+  clearInterval(countdownInterval);
+  updateTimerDisplay(0);
+  stopLiveFaceDetection();
+  
+  if (chunks.length === 0) {
+    status.textContent = '❌ No video data recorded';
+    status.className = 'status error';
+    resetRecordingState();
+    return;
+  }
+  
+  const blob = new Blob(chunks, { type: "video/webm" });
+  const fileSizeMB = (blob.size / (1024 * 1024)).toFixed(2);
+  
+  console.log(`Recording size: ${fileSizeMB}MB`);
+  
+  if (blob.size < 1000) {
+    status.textContent = '❌ Recording too short or empty';
+    status.className = 'status error';
+    resetRecordingState();
+    return;
+  }
+  
+  const form = new FormData();
+  form.append("file", blob, "interview_response.webm");
+  form.append("candidate", candidate.value.trim());
+  form.append("role", roleSelect.value || "General");
+  form.append("last_question", lastQuestion || "");
+  
+  status.textContent = `⏳ Uploading (${fileSizeMB}MB) and analyzing...`;
+  status.className = 'status processing';
+  
+  try {
+    const res = await fetch("/upload-audio", {
+      method: "POST",
+      body: form
+    });
+    
+    if (!res.ok) {
+      throw new Error(`Server error: ${res.status} ${res.statusText}`);
+    }
+    
+    const data = await res.json();
+    
+    if (data.status === 'error') {
+      throw new Error(data.message || 'Upload failed');
+    }
+    
+    status.textContent = "✅ Upload successful!";
+    status.className = 'status';
+    
+    transcriptBox.textContent = data.transcript || "[No transcript available]";
     renderScores(data.score);
+    
     if (data.emotions) {
       renderEmotions(data.emotions);
     }
-    lastTranscript=data.transcript;
-    loadHistory();
-    fetchNextQuestion(lastTranscript);
-  }catch(err){status.textContent="Upload failed: "+err.message;}
-  finally{startBtn.disabled=false;stopBtn.disabled=true;}
+    
+    lastTranscript = data.transcript;
+    
+    // Reload history
+    await loadHistory();
+    
+    // Fetch next question
+    await fetchNextQuestion(lastTranscript);
+    
+    setTimeout(() => {
+      status.textContent = "Ready for next question";
+    }, 3000);
+    
+  } catch (err) {
+    console.error('Upload error:', err);
+    status.textContent = "❌ Upload failed: " + err.message;
+    status.className = 'status error';
+  } finally {
+    resetRecordingState();
+  }
 }
 
-// --- Init ---
-roleSelect.addEventListener("change",()=>fetchNextQuestion());
-candidate.addEventListener("input",()=>setTimeout(loadHistory,700));
-window.addEventListener("load",initMedia);
+function resetRecordingState() {
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  isRecording = false;
+  chunks = [];
+}
+
+// ========== EVENT LISTENERS ==========
+roleSelect.addEventListener("change", () => {
+  if (roleSelect.value) {
+    fetchNextQuestion();
+  }
+});
+
+// Debounced history load
+let historyTimeout;
+candidate.addEventListener("input", () => {
+  clearTimeout(historyTimeout);
+  historyTimeout = setTimeout(() => {
+    if (candidate.value.trim()) {
+      loadHistory();
+    } else {
+      historyContainer.innerHTML = '<div class="card"><em>Enter your name to view history</em></div>';
+    }
+  }, 700);
+});
+
+// ========== INITIALIZATION ==========
+window.addEventListener("load", async () => {
+  await initMedia();
+  
+  // Check backend health
+  try {
+    const res = await fetch('/health');
+    const health = await res.json();
+    console.log('Backend health:', health);
+    
+    if (!health.whisper_loaded) {
+      console.warn('Whisper model not loaded - transcription may fail');
+    }
+    if (!health.mongodb_connected) {
+      console.warn('MongoDB not connected - history will not be saved');
+    }
+    if (!health.openrouter_configured) {
+      console.warn('OpenRouter not configured - AI features limited');
+    }
+  } catch (err) {
+    console.error('Health check failed:', err);
+  }
+});
+
+// Prevent accidental page refresh during recording
+window.addEventListener("beforeunload", (e) => {
+  if (isRecording) {
+    e.preventDefault();
+    e.returnValue = "Recording in progress. Are you sure you want to leave?";
+    return e.returnValue;
+  }
+});
+
+// Stop media stream on page unload
+window.addEventListener("unload", () => {
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop());
+  }
+});
+
+// ========== KEYBOARD SHORTCUTS ==========
+document.addEventListener("keydown", (e) => {
+  // Ctrl/Cmd + Enter to start recording
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !startBtn.disabled) {
+    e.preventDefault();
+    startBtn.click();
+  }
+  
+  // Ctrl/Cmd + S to stop recording
+  if ((e.ctrlKey || e.metaKey) && e.key === 's' && !stopBtn.disabled) {
+    e.preventDefault();
+    stopBtn.click();
+  }
+});
+
+// ========== TOOLTIPS (Optional Enhancement) ==========
+function addTooltip(element, text) {
+  element.title = text;
+}
+
+addTooltip(startBtn, "Keyboard shortcut: Ctrl+Enter");
+addTooltip(stopBtn, "Keyboard shortcut: Ctrl+S");
+addTooltip(timePerAnswer, "Set the time limit for each answer");
+
+console.log("%c🎯 HR Training Simulator Loaded!", "color: #667eea; font-size: 16px; font-weight: bold;");
+console.log("%cKeyboard Shortcuts:", "color: #3498db; font-size: 14px;");
+console.log("  Ctrl+Enter: Start Recording");
+console.log("  Ctrl+S: Stop Recording");
 </script>
 </body>
 </html>
