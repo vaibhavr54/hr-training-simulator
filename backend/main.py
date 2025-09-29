@@ -143,7 +143,7 @@ def call_openrouter(messages, temperature=0.7):
         "X-Title": "HR Simulator"
     }
     payload = {
-        "model": "x-ai/grok-beta",
+        "model": "meta-llama/llama-3.3-8b-instruct:free",
         "messages": messages,
         "temperature": temperature
     }
@@ -253,7 +253,7 @@ async def upload_audio(
         "file_path": str(file_path),
         "transcript": transcript,
         "last_question": last_question,
-        "timestamp": datetime.utcnow(),
+        "timestamp": datetime.now(),
         "score": score_data,
         "emotion_data": emotion_data  # Store emotion data
     })
