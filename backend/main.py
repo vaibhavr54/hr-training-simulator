@@ -30,7 +30,7 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017")
 try:
     client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
-    client.server_info()  # Test connection
+    client.server_info()
     db = client["hr_simulator"]
     sessions = db["sessions"]
     logger.info("MongoDB connected successfully")
@@ -86,7 +86,6 @@ def convert_to_mp4(input_path: Path) -> Path:
     try:
         output_path = input_path.with_suffix('.mp4')
         
-        # Check if ffmpeg is available
         result = subprocess.run(
             ['ffmpeg', '-version'],
             capture_output=True,
@@ -97,19 +96,17 @@ def convert_to_mp4(input_path: Path) -> Path:
             logger.warning("FFmpeg not available, using original file")
             return input_path
         
-        # Convert video
         subprocess.run([
             'ffmpeg', '-i', str(input_path),
             '-c:v', 'libx264',
             '-c:a', 'aac',
             '-strict', 'experimental',
-            '-y',  # Overwrite output file
+            '-y',
             str(output_path)
         ], check=True, capture_output=True, timeout=60)
         
         logger.info(f"Converted {input_path.name} to MP4")
         
-        # Delete original webm file
         if input_path.suffix == '.webm' and output_path.exists():
             input_path.unlink()
         
@@ -121,7 +118,7 @@ def convert_to_mp4(input_path: Path) -> Path:
         logger.error(f"Video conversion failed: {e}")
         return input_path
 
-# ---- Emotion Detection Helper ----
+# ---- Emotion Detection Helper (WITHOUT FACE VISIBILITY SCORE) ----
 def analyze_emotions_from_video(video_path: Path):
     """Analyze emotions from video frames using DeepFace with optimizations"""
     try:
@@ -139,9 +136,8 @@ def analyze_emotions_from_video(video_path: Path):
         frame_count = 0
         analyzed_count = 0
         
-        # Sample every 60 frames (2 seconds at 30fps) for better performance
         sample_interval = 60
-        max_samples = 20  # Limit total samples to prevent long processing
+        max_samples = 20
         
         logger.info(f"Analyzing video: {total_frames} frames at {fps} fps")
         
@@ -150,18 +146,15 @@ def analyze_emotions_from_video(video_path: Path):
             if not ret:
                 break
             
-            # Sample frames at intervals
             if frame_count % sample_interval == 0:
                 try:
-                    # Resize frame for faster processing
                     small_frame = cv2.resize(frame, (320, 240))
                     
-                    # Analyze emotion
                     result = DeepFace.analyze(
                         small_frame,
                         actions=['emotion'],
                         enforce_detection=False,
-                        detector_backend='opencv'  # Faster than default
+                        detector_backend='opencv'
                     )
                     
                     if isinstance(result, list):
@@ -170,33 +163,16 @@ def analyze_emotions_from_video(video_path: Path):
                     dominant_emotion = result.get('dominant_emotion', 'neutral')
                     emotions = result.get('emotion', {})
                     
-                    # Check face presence
-                    face_region = result.get('region', {})
-                    face_confidence = 100  # Default high confidence
-                    
-                    if face_region:
-                        face_width = face_region.get('w', 0)
-                        face_height = face_region.get('h', 0)
-                        
-                        # Calculate face quality
-                        if face_width < 30 or face_height < 30:
-                            face_confidence = 30
-                            if len(feedback_messages) < 3:
-                                feedback_messages.append(
-                                    f"At {frame_count//fps:.0f}s: Face not clearly visible"
-                                )
-                    
                     emotions_data.append({
                         'frame': frame_count,
                         'dominant_emotion': dominant_emotion,
                         'all_emotions': emotions,
-                        'timestamp': frame_count / fps,
-                        'face_confidence': face_confidence
+                        'timestamp': frame_count / fps
                     })
                     
                     analyzed_count += 1
                     
-                    # Generate targeted feedback
+                    # Generate targeted feedback (without face visibility mentions)
                     time_str = f"At {frame_count//fps:.0f}s"
                     
                     if dominant_emotion in ['sad', 'fear'] and len(feedback_messages) < 5:
@@ -220,21 +196,12 @@ def analyze_emotions_from_video(video_path: Path):
         # Calculate emotion summary
         if emotions_data:
             emotion_counts = {}
-            total_confidence = 0
             
             for data in emotions_data:
                 emotion = data['dominant_emotion']
                 emotion_counts[emotion] = emotion_counts.get(emotion, 0) + 1
-                total_confidence += data.get('face_confidence', 50)
             
-            # Most frequent emotion
             dominant_overall = max(emotion_counts, key=emotion_counts.get)
-            avg_face_confidence = total_confidence / len(emotions_data)
-            
-            # Add overall feedback
-            if avg_face_confidence < 50:
-                feedback_messages.insert(0, "⚠️ Overall: Ensure better lighting and face visibility")
-            
             confidence_score = calculate_confidence_from_emotions(emotion_counts)
             
             return {
@@ -242,7 +209,6 @@ def analyze_emotions_from_video(video_path: Path):
                 'emotion_distribution': emotion_counts,
                 'feedback_messages': feedback_messages[:5],
                 'confidence_score': confidence_score,
-                'face_visibility_score': int(avg_face_confidence),
                 'frames_analyzed': analyzed_count
             }
         
@@ -332,20 +298,17 @@ Evaluate this interview response. Return ONLY a JSON object with this exact stru
         if not content:
             return None
         
-        # Extract JSON from response
         match = re.search(r"\{.*\}", content, re.DOTALL)
         if match:
             content = match.group(0)
         
         parsed = json.loads(content)
         
-        # Validate required keys
         required_keys = {"communication", "confidence", "structure", "soft_skills", "feedback"}
         if not required_keys.issubset(parsed.keys()):
             logger.warning("Missing required keys in AI response")
             return None
         
-        # Ensure numeric values are integers
         for key in ["communication", "confidence", "structure", "soft_skills"]:
             parsed[key] = int(parsed[key])
         
@@ -362,7 +325,6 @@ def fallback_score(transcript: str):
     words = transcript.split()
     word_count = len(words)
     
-    # Basic heuristics
     communication = min(100, max(30, word_count * 2))
     confidence = 50
     structure = 40 if word_count > 20 else 30
@@ -414,17 +376,14 @@ async def upload_audio(
 ):
     """Handle video upload, transcription, and analysis"""
     
-    # Read file contents
     contents = await file.read()
     file_size = len(contents)
     
-    # Validate file
     try:
         validate_upload_file(file.filename, file_size)
     except HTTPException as e:
         return {"status": "error", "message": str(e.detail)}
     
-    # Save uploaded file
     timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     filename = f"{timestamp}_{file.filename}"
     file_path = uploads_dir / filename
@@ -435,7 +394,6 @@ async def upload_audio(
         
         logger.info(f"File saved: {filename} ({file_size/1024/1024:.2f}MB)")
         
-        # Convert to MP4 if needed
         video_path = await asyncio.get_event_loop().run_in_executor(
             executor, convert_to_mp4, file_path
         )
@@ -495,7 +453,7 @@ async def upload_audio(
                 logger.error(f"MongoDB insert error: {e}")
         
         # Cleanup old files periodically
-        if timestamp.endswith("00"):  # Every ~100 uploads
+        if timestamp.endswith("00"):
             await asyncio.get_event_loop().run_in_executor(executor, cleanup_old_files)
         
         return {
@@ -508,7 +466,6 @@ async def upload_audio(
         
     except Exception as e:
         logger.error(f"Upload processing error: {e}")
-        # Cleanup on error
         if file_path.exists():
             file_path.unlink()
         raise HTTPException(500, f"Processing failed: {str(e)}")
@@ -564,7 +521,7 @@ async def get_history(candidate: str):
         cursor = sessions.find(
             {"candidate": candidate_name},
             {"_id": 0}
-        ).sort("timestamp", -1).limit(50)  # Limit to 50 most recent
+        ).sort("timestamp", -1).limit(50)
         
         attempts = []
         for doc in cursor:
@@ -589,7 +546,6 @@ async def health():
     }
     return status
 
-# Startup event
 @app.on_event("startup")
 async def startup_event():
     """Run on application startup"""
@@ -600,7 +556,6 @@ async def startup_event():
     logger.info(f"OpenRouter: {'Configured' if OPENROUTER_API_KEY else 'Not Configured'}")
     logger.info("=" * 50)
 
-# Shutdown event
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
