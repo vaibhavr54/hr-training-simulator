@@ -222,7 +222,7 @@
     #liveEmotionFeedback {
       background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
       border: 2px solid #667eea;
-      min-height: 80px;
+      min-height: 60px;
       display: flex;
       flex-direction: column;
       padding: 12px;
@@ -476,36 +476,54 @@ function startAudioAnalysis() {
     const dataArray = new Uint8Array(bufferLength);
     
     let silenceCount = 0;
+    let speakingCount = 0;
     let wordCount = 0;
     let startTime = Date.now();
+    let lastVolumeUpdate = 0;
+    
+    console.log('🎤 Audio analysis started - monitoring volume and speech duration');
     
     audioAnalysisInterval = setInterval(() => {
       analyser.getByteFrequencyData(dataArray);
       
       const average = dataArray.reduce((sum, value) => sum + value, 0) / bufferLength;
+      const currentTime = Date.now();
       
-      // Volume feedback
+      // Volume feedback (check every second, update UI every 3 seconds)
       if (average < 20) {
         silenceCount++;
-        if (silenceCount > 3) {
+        speakingCount = 0;
+        if (silenceCount > 3 && currentTime - lastVolumeUpdate > 3000) {
           updateFeedback('volume', '🔊 Speak louder - your voice is too quiet');
+          lastVolumeUpdate = currentTime;
+          console.log('⚠️ Low volume detected:', average.toFixed(1));
         }
       } else if (average < 40) {
         silenceCount = 0;
-        updateFeedback('volume', '💡 Volume could be better');
+        speakingCount++;
+        if (speakingCount > 2 && currentTime - lastVolumeUpdate > 3000) {
+          updateFeedback('volume', '💡 Volume could be better');
+          lastVolumeUpdate = currentTime;
+        }
       } else {
         silenceCount = 0;
+        speakingCount++;
         updateFeedback('volume', null);
+        wordCount++;
       }
       
-      // Speech duration feedback
-      const elapsedSeconds = (Date.now() - startTime) / 1000;
-      if (elapsedSeconds > 15) {
-        wordCount++;
-        if (wordCount > 120) {
-          updateFeedback('duration', '⚡ Be more concise - you\'ve spoken for a while');
-        } else if (wordCount > 60) {
+      // Speech duration feedback (speaking continuously)
+      const elapsedSeconds = (currentTime - startTime) / 1000;
+      if (speakingCount > 0 && elapsedSeconds > 10) {
+        const estimatedWords = wordCount * 2; // Rough estimate
+        
+        if (estimatedWords > 200 && elapsedSeconds > 60) {
+          updateFeedback('duration', '⚡ Be more concise - you\'ve been speaking for over a minute');
+          console.log('⚠️ Long response detected:', elapsedSeconds.toFixed(0), 'seconds');
+        } else if (estimatedWords > 120 && elapsedSeconds > 40) {
           updateFeedback('duration', '📝 Consider wrapping up your answer soon');
+        } else if (elapsedSeconds > 90) {
+          updateFeedback('duration', '⏱️ Very long response - try to be more concise');
         } else {
           updateFeedback('duration', null);
         }
@@ -542,6 +560,8 @@ async function startLiveFaceDetection() {
   
   let checkCount = 0;
   
+  console.log('📷 Face detection started - monitoring positioning and lighting');
+  
   faceDetectionInterval = setInterval(() => {
     if (video.readyState === 4) {
       canvas.width = video.videoWidth;
@@ -563,19 +583,22 @@ async function startLiveFaceDetection() {
           updateFeedback('positioning', '💡 Improve lighting - it\'s too dark');
           emotionStatus.textContent = '⚠️ Low lighting detected';
           emotionStatus.className = 'emotion-negative';
+          console.log('⚠️ Low lighting:', centerBrightness.toFixed(1));
         } else if (Math.abs(centerBrightness - edgeBrightness) > 60) {
           updateFeedback('positioning', '📷 Center yourself in the frame');
           emotionStatus.textContent = '📷 Position adjustment needed';
           emotionStatus.className = 'emotion-warning';
+          console.log('⚠️ Poor centering detected');
         } else {
           updateFeedback('positioning', null);
           emotionStatus.textContent = '✅ Good positioning';
           emotionStatus.className = 'emotion-positive';
         }
         
-        // Eye contact reminder
+        // Eye contact reminder (every 30 seconds)
         if (checkCount % 15 === 0) {
-          updateFeedback('emotion', '👁️ Maintain eye contact with the camera');
+          updateFeedback('emotion', '👁️ Look at the camera - maintain eye contact');
+          console.log('💡 Eye contact reminder sent');
           setTimeout(() => updateFeedback('emotion', null), 4000);
         }
         
@@ -628,7 +651,7 @@ async function startLiveEmotionDetection() {
         console.error('Live emotion detection error:', e);
       }
     }
-  }, 5000); // Check every 5 seconds
+  }, 3000); // Check every 3 seconds
 }
 
 function analyzeEmotionFromFrame(imageData, timestamp, frameCount) {
@@ -736,10 +759,10 @@ function analyzeEmotionFromFrame(imageData, timestamp, frameCount) {
   // Confidence reminders at specific intervals with variety
   if (timestamp % 15 === 0 && timestamp > 0) {
     const confidenceMessages = [
-      `Remember to smile naturally`,
-      `Maintain confident posture`,
-      `Project confidence through your voice`,
-      `Keep steady eye contact`
+      `At ${timestamp}s: Remember to smile naturally`,
+      `At ${timestamp}s: Maintain confident posture`,
+      `At ${timestamp}s: Project confidence through your voice`,
+      `At ${timestamp}s: Keep steady eye contact`
     ];
     const randomMsg = confidenceMessages[Math.floor(Math.random() * confidenceMessages.length)];
     feedbackOptions.push({
@@ -754,7 +777,7 @@ function analyzeEmotionFromFrame(imageData, timestamp, frameCount) {
   if (avgContrast > 20 && avgBrightness > 80 && timestamp > 10 && frameCount % 15 === 0) {
     feedbackOptions.push({
       timestamp,
-      message: `Excellent engagement with the question`,
+      message: `At ${timestamp}s: Excellent engagement with the question`,
       type: 'positive',
       priority: 1
     });

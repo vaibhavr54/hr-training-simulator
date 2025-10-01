@@ -249,7 +249,7 @@ def call_openrouter(messages, temperature=0.7, timeout=30):
         "X-Title": "HR Simulator"
     }
     payload = {
-        "model": "meta-llama/llama-3.3-8b-instruct:free",
+        "model": "nvidia/nemotron-nano-9b-v2:free",
         "messages": messages,
         "temperature": temperature
     }
