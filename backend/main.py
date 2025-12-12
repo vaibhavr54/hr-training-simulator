@@ -559,5 +559,5 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    logger.info("Shutting down...")
+    logger.info("Shutting down....")
     executor.shutdown(wait=False)
