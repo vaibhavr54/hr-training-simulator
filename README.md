@@ -1,59 +1,94 @@
-## 🧠 HR Training Simulator — AI-Powered Interview Evaluation System
+# 🧠 HR Training Simulator — AI-Powered Interview Evaluation System
 
 ### 📄 Overview
 
-The **HR Training Simulator** is an AI-driven backend system that evaluates candidate interview videos by combining **speech analysis**, **emotion detection**, and **AI-based scoring**.
+The **HR Training Simulator** is an AI-driven interview evaluation system that processes candidate video responses using:
 
-This backend uses:
+* 🎤 **Whisper** for transcription
+* 😊 **DeepFace + RetinaFace** for emotion detection
+* 🧩 **OpenRouter LLM API** for scoring and next-question generation
+* 🖥️ **Interactive Frontend Simulator** featuring:
 
-* 🎤 **OpenAI Whisper** for speech transcription
-* 😊 **DeepFace + RetinaFace** for facial emotion recognition
-* 🧩 **OpenRouter LLM API** for intelligent interview scoring and next-question generation
-* 💾 **MongoDB** for session storage and historical analytics
-* ⚙️ **FastAPI** for serving endpoints and handling uploads
+  * AI Interviewer Avatar (voice + lip-sync)
+  * Real-time audio & face monitoring
+  * Live micro-feedback via speech
+  * Automatic question narration
+* 💾 **MongoDB** for storing scores, transcripts, emotions, and history
+* ⚙️ **FastAPI** backend for processing, evaluation, and data management
 
 ---
 
 ## 🚀 Features
 
-✅ **Speech-to-Text (Transcription)**
-Converts candidate’s spoken responses to text using OpenAI’s Whisper model.
+### ✅ **Speech-to-Text (Transcription)**
 
-✅ **Emotion Detection from Video**
-Analyzes video frames to detect emotions (happy, sad, angry, etc.) and computes a confidence score.
+Uses OpenAI Whisper to convert spoken responses into accurate text.
 
-✅ **AI-Based Evaluation**
-Integrates with OpenRouter’s LLM to assess:
+### ✅ **Emotion Detection from Video**
+
+Analyzes sampled video frames using DeepFace to determine dominant emotions and confidence scores.
+
+### ✅ **AI-Based Interview Scoring**
+
+Evaluates candidate responses across:
 
 * Communication
 * Confidence
 * Structure
 * Soft Skills
-  and generates human-like feedback.
 
-✅ **Dynamic Question Generation**
-Creates next interview questions based on previous answers to simulate real HR interactions.
+Also generates natural-language feedback.
 
-✅ **Data Storage (MongoDB)**
-Stores each candidate’s session data, including transcripts, scores, and emotional insights.
+### ✅ **Dynamic Question Generation**
 
-✅ **Health Monitoring & Cleanup**
-Includes endpoints for health checks and automatic cleanup of old uploaded files.
+Creates the next interview question based on previous performance and answer context.
+
+### ✅ **Real-Time Frontend Analysis**
+
+The updated frontend performs live monitoring while recording:
+
+* **Audio loudness detection** → alerts when voice is too low
+* **Face visibility detection** → alerts if face is not visible
+* **Emotion cues** → detects positive or negative emotional trends
+* Feedback is **spoken by the avatar** instead of shown as text
+
+### ✅ **AI Interviewer Avatar**
+
+The frontend now includes:
+
+* Auto lip-sync animation while speaking
+* Blinking & expression animations
+* Voice output using browser SpeechSynthesis
+* Spoken instructions, warnings, and motivation
+* Visual pulse animation upon delivering feedback
+
+### ✅ **Candidate History Management**
+
+Stores:
+
+* Past questions
+* Transcripts
+* Scores
+* Emotional analysis
+* Attempt timestamps
+
+Viewable and sortable by newest/oldest.
 
 ---
 
 ## 🧩 Tech Stack
 
-| Category           | Technology                   |
-| ------------------ | ---------------------------- |
-| Backend Framework  | FastAPI                      |
-| Speech Recognition | OpenAI Whisper               |
-| Emotion Detection  | DeepFace + OpenCV            |
-| AI Text Generation | OpenRouter API               |
-| Database           | MongoDB                      |
-| Environment Config | python-dotenv                |
-| Async Tasks        | asyncio + ThreadPoolExecutor |
-| Logging            | Python logging module        |
+| Category               | Technology                      |
+| ---------------------- | ------------------------------- |
+| **Backend API**        | FastAPI                         |
+| **Transcription**      | OpenAI Whisper                  |
+| **Emotion Analysis**   | DeepFace + OpenCV               |
+| **AI Text Scoring**    | OpenRouter API                  |
+| **Database**           | MongoDB                         |
+| **Frontend**           | HTML, CSS, JavaScript, Chart.js |
+| **Live Avatar Voice**  | Web Speech API                  |
+| **Environment Config** | python-dotenv                   |
+| **Async Tasks**        | asyncio + ThreadPoolExecutor    |
 
 ---
 
@@ -64,8 +99,8 @@ backend/
 │
 ├── main.py                 # Main FastAPI application
 ├── .env                    # Environment variables (MONGO_URI, OPENROUTER_API_KEY)
-├── requirements.txt         # Python dependencies
-├── static/                 # Frontend files (index.html, etc.)
+├── requirements.txt        # Python dependencies
+├── static/                 # Frontend UI (index.html + avatar logic)
 ├── uploads/                # Uploaded media files (auto-created)
 └── venv/                   # Virtual environment
 ```
@@ -86,7 +121,6 @@ cd hr-training-simulator/backend
 ```bash
 python -m venv venv
 .\venv\Scripts\activate       # (Windows)
-# or
 source venv/bin/activate      # (Linux/Mac)
 ```
 
@@ -101,8 +135,6 @@ pip install -r requirements.txt
 
 ## 🧾 Example `.env` File
 
-Create a file named **`.env`** in the `backend/` directory:
-
 ```
 MONGO_URI=mongodb://localhost:27017
 OPENROUTER_API_KEY=your_openrouter_api_key_here
@@ -112,13 +144,11 @@ OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 ## ▶️ Running the Server
 
-Start your FastAPI backend:
-
 ```bash
 uvicorn main:app --reload
 ```
 
-Server will run at:
+The app runs at:
 
 ```
 http://127.0.0.1:8000
@@ -128,35 +158,46 @@ http://127.0.0.1:8000
 
 ## 🔍 API Endpoints
 
-| Method   | Endpoint               | Description                            |
-| -------- | ---------------------- | -------------------------------------- |
-| **GET**  | `/`                    | Serve main HTML page                   |
-| **POST** | `/upload-audio`        | Upload and analyze interview video     |
-| **POST** | `/next-question`       | Generate next interview question       |
-| **GET**  | `/history/{candidate}` | Retrieve candidate’s interview history |
-| **GET**  | `/health`              | Server health status check             |
+| Method   | Endpoint               | Description                           |
+| -------- | ---------------------- | ------------------------------------- |
+| **GET**  | `/`                    | Serves the frontend interview UI      |
+| **POST** | `/upload-audio`        | Upload & analyze interview video      |
+| **POST** | `/next-question`       | Generate next question dynamically    |
+| **GET**  | `/history/{candidate}` | Fetch interview history from database |
+| **GET**  | `/health`              | Server health status                  |
 
 ---
 
 ## 🧠 How It Works
 
-1. Candidate uploads an interview video.
-2. Video is validated and converted to `.mp4` if needed.
-3. Whisper transcribes audio to text.
-4. DeepFace analyzes facial emotions across sampled frames.
-5. Combined transcript and emotion summary are sent to OpenRouter for scoring.
-6. Results (scores + feedback) are stored in MongoDB.
-7. The next interview question is dynamically generated.
+1. Avatar speaks the interview question and technical/behavioural feedbacks in real time.
+2. Candidate records response via webcam + microphone.
+3. Frontend performs **live audio, face & emotion checks** and gives spoken feedback.
+4. Recording is sent to backend.
+5. Backend pipeline:
+
+   * Whisper transcribes the audio
+   * DeepFace analyzes emotions
+   * OpenRouter LLM evaluates the answer
+6. Backend returns:
+
+   * Transcript
+   * Scores
+   * Feedback
+   * Emotion summary
+7. Frontend updates charts, transcript box, and avatar feedback.
+8. The next question is generated and spoken automatically.
+9. Attempt data is stored in MongoDB for history tracking.
 
 ---
 
-## Screenshots 
-<img width="1919" height="916" alt="image" src="https://github.com/user-attachments/assets/68430a05-9c5c-4615-a6b8-048d30a6e5e0" />
+## Screenshots
 
+
+
+---
 
 ## 🧩 Dependencies
-
-Core dependencies (include in `requirements.txt`):
 
 ```
 fastapi
@@ -172,19 +213,22 @@ tf-keras
 opencv-python-headless
 numpy
 requests
+python-multipart
+pydantic
 ```
 
 ---
 
 ## 🧰 Troubleshooting
 
-| Issue                          | Fix                                                 |
-| ------------------------------ | --------------------------------------------------- |
-| `ModuleNotFoundError: whisper` | Run `pip install -U openai-whisper`                 |
-| `No module named tf_keras`     | Run `pip install tf-keras`                          |
-| MongoDB connection failed      | Start MongoDB service or check your `.env` URI      |
-| Whisper slow or memory-heavy   | Use `"tiny"` or `"small"` model instead of `"base"` |
-| OpenRouter API errors          | Ensure valid `OPENROUTER_API_KEY` in `.env`         |
+| Issue                          | Fix                                              |
+| ------------------------------ | ------------------------------------------------ |
+| `ModuleNotFoundError: whisper` | Run `pip install -U openai-whisper`              |
+| `No module named tf_keras`     | Run `pip install tf-keras`                       |
+| MongoDB connection failed      | Check `.env` for correct URI                     |
+| Whisper slow                   | Use `tiny` or `small` model                      |
+| Avatar not speaking            | Enable browser SpeechSynthesis voice permissions |
+| Camera/mic blocked             | Allow permissions in browser                     |
 
 ---
 
@@ -194,12 +238,12 @@ requests
 curl http://127.0.0.1:8000/health
 ```
 
-Response:
+Example response:
 
 ```json
 {
   "status": "ok",
-  "timestamp": "2025-10-31T02:10:00",
+  "timestamp": "2025-12-12T20:55:00",
   "whisper_loaded": true,
   "mongodb_connected": true,
   "openrouter_configured": true
@@ -214,17 +258,18 @@ Response:
 {
   "status": "ok",
   "filename": "20251031021000_interview.mp4",
-  "transcript": "My name is John Doe, and I have three years of experience in HR analytics...",
+  "transcript": "My name is John Doe, and I have three years of experience...",
   "score": {
     "communication": 85,
     "confidence": 78,
     "structure": 80,
     "soft_skills": 82,
-    "feedback": "Strong communication and structure. Slight nervousness noted but overall confident response.",
-    "emotion_analysis": {
-      "dominant_emotion": "happy",
-      "confidence_score": 86
-    }
+    "feedback": "Strong communication and structure. Slight nervousness noted but overall confident response."
+  },
+  "emotions": {
+    "dominant_emotion": "happy",
+    "confidence_score": 86,
+    "frames_analyzed": 120
   }
 }
 ```
@@ -235,3 +280,7 @@ Response:
 
 * **Vaibhav Rakshe** — Developer & Research Lead
 * **Shentinelix Sphere Project Team**
+
+---
+
+Just tell me!
