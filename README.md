@@ -282,5 +282,3 @@ Example response:
 * **Shentinelix Sphere Project Team**
 
 ---
-
-Just tell me!
